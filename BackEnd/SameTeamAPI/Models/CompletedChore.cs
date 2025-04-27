@@ -7,13 +7,17 @@ public partial class CompletedChore
 {
     public int CompletedId { get; set; }
 
-    public int? ChoreId { get; set; }
+    public int ChoreId { get; set; }
 
-    public int? UserId { get; set; }
+    public string ChoreText { get; set; } = null!;
 
-    public DateTime? CompletionDate { get; set; }
+    public int Points { get; set; }
 
-    public virtual Chore? Chore { get; set; }
+    public int? AssignedTo { get; set; }
 
-    public virtual User? User { get; set; }
+    public DateOnly DateAssigned { get; set; }
+
+    public DateOnly CompletionDate { get; set; }
+
+    public virtual User? AssignedToNavigation { get; set; }
 }

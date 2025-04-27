@@ -20,7 +20,8 @@ GO
 -- Teams Table
 CREATE TABLE Teams (
     TeamID INT IDENTITY(1,1) PRIMARY KEY,
-    TeamName NVARCHAR(100) NOT NULL UNIQUE
+    TeamName NVARCHAR(100) NOT NULL UNIQUE,
+	TeamPassword NVARCHAR(100) NOT NULL DEFAULT ''
 );
 GO
 
@@ -79,11 +80,11 @@ GO
 * This section populates the Tables
 *********************************************************/
 SET IDENTITY_INSERT Teams ON;
-INSERT INTO Teams (TeamID, TeamName)
+INSERT INTO Teams (TeamID, TeamName, TeamPassword)
 VALUES
-(1, 'Avengers'),
-(2, 'Justice'),
-(3, 'Supers');
+(1, 'Avengers', 'Avengers'),
+(2, 'Justice', 'Justice'),
+(3, 'Supers', 'Supers');
 SET IDENTITY_INSERT Teams OFF;
 
 SET IDENTITY_INSERT Rewards ON;

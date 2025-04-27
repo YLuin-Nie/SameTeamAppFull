@@ -68,7 +68,6 @@ namespace SameTeamAPI.Controllers
             return NoContent();
         }
 
-        // New method to fetch team details by team ID
         [HttpGet("team/{teamId}")]
         public async Task<IActionResult> GetTeam(int teamId)
         {
@@ -78,6 +77,28 @@ namespace SameTeamAPI.Controllers
                 return NotFound("Team not found");
             }
             return Ok(team);
+        }
+
+        // ⭐ AddChild endpoint using ParentId (matches new User.cs structure)
+        [HttpPost("addChild")]
+        public async Task<IActionResult> AddChild([FromBody] AddChildRequest model)
+        {
+            var parent = await _context.Users.FindAsync(model.ParentId);
+            if (parent == null)
+            {
+                return BadRequest("Parent not found.");
+            }
+
+            var child = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            if (child == null)
+            {
+                return BadRequest("Child with given email not found.");
+            }
+
+            child.ParentId = parent.UserId;
+            await _context.SaveChangesAsync();
+
+            return Ok(child);
         }
     }
 }

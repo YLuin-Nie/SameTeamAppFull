@@ -21,6 +21,8 @@ public partial class User
 
     public int? TeamId { get; set; }
 
+    public int? ParentId { get; set; }
+
     public virtual ICollection<Chore> Chores { get; set; } = new List<Chore>();
 
     public virtual ICollection<CompletedChore> CompletedChores { get; set; } = new List<CompletedChore>();

@@ -22,15 +22,16 @@ public class ChoresController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Chore>> GetChore(int id)
+    public async Task<ActionResult<Chore>> GetChore([FromRoute] int id)
     {
         var chore = await _context.Chores.FindAsync(id);
-        if (chore == null) return NotFound();
+        if (chore == null)
+            return NotFound();
         return chore;
     }
 
     [HttpPost]
-    public async Task<ActionResult<Chore>> CreateChore(Chore chore)
+    public async Task<ActionResult<Chore>> CreateChore([FromBody] Chore chore)
     {
         _context.Chores.Add(chore);
         await _context.SaveChangesAsync();
@@ -38,9 +39,10 @@ public class ChoresController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateChore(int id, Chore chore)
+    public async Task<IActionResult> UpdateChore([FromRoute] int id, [FromBody] Chore chore)
     {
-        if (id != chore.ChoreId) return BadRequest();
+        if (id != chore.ChoreId)
+            return BadRequest();
 
         _context.Entry(chore).State = EntityState.Modified;
         await _context.SaveChangesAsync();
@@ -48,13 +50,38 @@ public class ChoresController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteChore(int id)
+    public async Task<IActionResult> DeleteChore([FromRoute] int id)
     {
         var chore = await _context.Chores.FindAsync(id);
-        if (chore == null) return NotFound();
+        if (chore == null)
+            return NotFound();
 
         _context.Chores.Remove(chore);
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpPost("complete/{choreId}")]
+    public async Task<IActionResult> CompleteChore([FromRoute] int choreId)
+    {
+        var chore = await _context.Chores.FindAsync(choreId);
+        if (chore == null)
+            return NotFound();
+
+        var completedChore = new CompletedChore
+        {
+            ChoreId = chore.ChoreId,
+            ChoreText = chore.ChoreText,
+            Points = chore.Points,
+            AssignedTo = chore.AssignedTo,
+            DateAssigned = chore.DateAssigned,
+            CompletionDate = DateOnly.FromDateTime(DateTime.UtcNow) // Today's date
+        };
+
+        _context.CompletedChores.Add(completedChore);
+        _context.Chores.Remove(chore);
+        await _context.SaveChangesAsync();
+
+        return Ok(completedChore);
     }
 }

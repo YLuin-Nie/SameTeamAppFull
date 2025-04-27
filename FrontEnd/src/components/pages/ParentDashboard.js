@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import '../Calendar.css';
 import { getCurrentUser } from '../../utils/auth';
-import { fetchChores, fetchUsers, addChild, fetchTeam } from '../../api/api'; // Ensure fetchTeam is imported
+import { fetchChores, fetchUsers, addChild, fetchTeam } from '../../api/api';
 
 function ParentDashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -12,10 +12,9 @@ function ParentDashboard() {
   const [children, setChildren] = useState([]);
   const [showAddChildForm, setShowAddChildForm] = useState(false);
   const [childEmail, setChildEmail] = useState('');
-  const [teamName, setTeamName] = useState(''); // New state for team name
+  const [teamName, setTeamName] = useState('');
   const currentUser = getCurrentUser();
 
-  // Define levels
   const levels = [
     { min: 0, max: 200, name: "Beginner", color: "#ccc" },
     { min: 200, max: 400, name: "Rising Star", color: "#aaf" },
@@ -24,59 +23,55 @@ function ParentDashboard() {
     { min: 1000, max: 10000, name: "Legend", color: "#fc8" },
   ];
 
-  useEffect(() => {
-    const loadChoresAndUsers = async () => {
-      try {
-        const [users, allChores] = await Promise.all([fetchUsers(), fetchChores()]);
-        const currentUserData = users.find(u => u.userId === currentUser.userId);
+  const loadChoresAndUsers = async () => {
+    try {
+      const [users, allChores] = await Promise.all([fetchUsers(), fetchChores()]);
+      const currentUserData = users.find(u => u.userId === currentUser.userId);
 
-        // Fetch and set the team name
-        if (currentUserData && currentUserData.teamId) {
-          console.log("Fetching team for teamId:", currentUserData.teamId); // Debugging line
-          const team = await fetchTeam(currentUserData.teamId);
-          console.log("Fetched team:", team); // Debugging line
-          setTeamName(team.teamName);
-        }
-
-        const childrenOnly = users.filter(u => u.role === 'Child' && u.parentId === currentUser.userId);
-
-        const enhancedChildren = childrenOnly.map(child => {
-          const childChores = allChores.filter(c => c.assignedTo === child.userId && c.completed);
-          const points = childChores.reduce((sum, c) => sum + c.points, 0);
-
-          const level = levels.find(l => points < l.max) || levels[levels.length - 1];
-
-          return {
-            ...child,
-            points,
-            level
-          };
-        });
-
-        setChildren(enhancedChildren);
-
-        // Show upcoming chores
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const next7Days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(today);
-          d.setDate(today.getDate() + i);
-          return d.toISOString().split('T')[0];
-        });
-
-        const upcomingChores = allChores.filter(c => {
-          if (!c.dateAssigned || c.completed) return false;
-          const date = new Date(c.dateAssigned).toISOString().split('T')[0];
-          return next7Days.includes(date);
-        }).sort((a, b) => new Date(a.dateAssigned) - new Date(b.dateAssigned));
-
-        setTasksForNext7Days(upcomingChores);
-      } catch (err) {
-        console.error("Error loading dashboard:", err);
+      if (currentUserData && currentUserData.teamId) {
+        const team = await fetchTeam(currentUserData.teamId);
+        setTeamName(team.teamName);
       }
-    };
 
+      const childrenOnly = users.filter(u => u.role === 'Child' && u.parentId === currentUser.userId);
+
+      const enhancedChildren = childrenOnly.map(child => {
+        const childChores = allChores.filter(c => c.assignedTo === child.userId && c.completed);
+        const points = childChores.reduce((sum, c) => sum + c.points, 0);
+
+        const level = levels.find(l => points < l.max) || levels[levels.length - 1];
+
+        return {
+          ...child,
+          points,
+          level
+        };
+      });
+
+      setChildren(enhancedChildren);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const next7Days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        return d.toISOString().split('T')[0];
+      });
+
+      const upcomingChores = allChores.filter(c => {
+        if (!c.dateAssigned || c.completed) return false;
+        const date = new Date(c.dateAssigned).toISOString().split('T')[0];
+        return next7Days.includes(date);
+      }).sort((a, b) => new Date(a.dateAssigned) - new Date(b.dateAssigned));
+
+      setTasksForNext7Days(upcomingChores);
+    } catch (err) {
+      console.error("Error loading dashboard:", err);
+    }
+  };
+
+  useEffect(() => {
     loadChoresAndUsers();
   }, [currentUser.userId]);
 
@@ -104,11 +99,11 @@ function ParentDashboard() {
     e.preventDefault();
     try {
       console.log("Adding child with email:", childEmail);
-      const newChild = await addChild(childEmail, currentUser.userId); // Ensure this API call is correct
-      console.log("New child added:", newChild);
-      setChildren([...children, newChild]);
+      await addChild(childEmail, currentUser.userId);
+      console.log("Child added, refreshing children list...");
       setChildEmail('');
       setShowAddChildForm(false);
+      await loadChoresAndUsers(); // Re-fetch to get updated list
     } catch (err) {
       console.error("Error adding child:", err);
       alert("Failed to add child. Please try again.");
@@ -120,7 +115,7 @@ function ParentDashboard() {
       <h1>Parent Dashboard</h1>
       <p>Welcome, {currentUser?.username || "Parent"}! Manage your family's progress here.</p>
 
-      <h3>Team: {teamName}</h3> {/* Display the team name */}
+      <h3>Team: {teamName}</h3>
 
       <h3>Children's Levels</h3>
       <ul>

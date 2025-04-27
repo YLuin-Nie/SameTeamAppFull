@@ -5,8 +5,10 @@ import {
   fetchChores,
   postChore,
   fetchUsers,
-  completeChore,
-  deleteChore
+  moveChoreToCompleted,
+  deleteChore,
+  fetchCompletedChores,
+  completeChore // <- make sure to import this!
 } from "../../api/api";
 
 const AddChore = () => {
@@ -15,6 +17,7 @@ const AddChore = () => {
   const [chorePoints, setChorePoints] = useState(10);
   const [choreDate, setChoreDate] = useState('');
   const [chores, setChores] = useState([]);
+  const [completedChores, setCompletedChores] = useState([]);
   const [childUsers, setChildUsers] = useState([]);
   const [editingChoreId, setEditingChoreId] = useState(null);
   const [editedChore, setEditedChore] = useState({});
@@ -27,6 +30,9 @@ const AddChore = () => {
         const users = await fetchUsers();
         const children = users.filter(user => user.role === "Child");
         setChildUsers(children);
+
+        const completed = await fetchCompletedChores();
+        setCompletedChores(completed);
       } catch (err) {
         console.error("Failed to load chores or users:", err);
       }
@@ -59,12 +65,19 @@ const AddChore = () => {
   };
 
   const toggleCompletion = async (chore) => {
-    const updated = { ...chore, completed: !chore.completed };
-    try {
-      await completeChore(chore.choreId, updated);
-      setChores(chores.map(c => (c.choreId === chore.choreId ? updated : c)));
-    } catch (err) {
-      console.error("Toggle complete error:", err);
+    if (!chore.completed) {
+      try {
+        await moveChoreToCompleted(chore.choreId);
+        setChores(chores.filter(c => c.choreId !== chore.choreId));
+        const updatedCompleted = await fetchCompletedChores();
+        setCompletedChores(updatedCompleted);
+      } catch (err) {
+        console.error("Move chore to completed error:", err);
+        alert("Failed to complete chore.");
+      }
+    } else {
+      console.warn("Undoing a completed chore is not supported yet.");
+      alert("Undo is not supported yet.");
     }
   };
 
@@ -89,28 +102,23 @@ const AddChore = () => {
 
   const saveEdit = async (choreId) => {
     const updated = {
-      ...editedChore,
-      choreId,
+      choreId: choreId,
+      choreText: editedChore.choreText,
+      points: editedChore.points,
+      dateAssigned: editedChore.dateAssigned,
       assignedTo: parseInt(editedChore.assignedTo),
-      completed: chores.find(c => c.choreId === choreId).completed
+      completed: false,
     };
+
     try {
       await completeChore(choreId, updated);
       setChores(chores.map(c => (c.choreId === choreId ? updated : c)));
       setEditingChoreId(null);
     } catch (err) {
-      console.error("Edit save error:", err);
+      console.error("Error saving edited chore:", err);
+      alert("Failed to save edits.");
     }
   };
-
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 7);
-
-  const pendingChores = chores.filter(c => !c.completed);
-  const completedChores = chores.filter(
-    c => c.completed && new Date(c.dateAssigned) >= sevenDaysAgo
-  );
 
   return (
     <div>
@@ -130,49 +138,56 @@ const AddChore = () => {
 
       <h3>Pending Chores</h3>
       <ul>
-        {pendingChores.map(chore => (
-          <li key={chore.choreId} className="chore-list-item">
-            {editingChoreId === chore.choreId ? (
-              <>
-                <input type="text" value={editedChore.choreText} onChange={e => setEditedChore({ ...editedChore, choreText: e.target.value })} />
-                <input type="number" value={editedChore.points} onChange={e => setEditedChore({ ...editedChore, points: Number(e.target.value) })} />
-                <input type="date" value={editedChore.dateAssigned} onChange={e => setEditedChore({ ...editedChore, dateAssigned: e.target.value })} />
-                <select value={editedChore.assignedTo} onChange={e => setEditedChore({ ...editedChore, assignedTo: e.target.value })}>
-                  {childUsers.map(child => (
-                    <option key={child.userId} value={child.userId}>{child.username}</option>
-                  ))}
-                </select>
-                <div className="chore-actions">
-                  <button onClick={() => saveEdit(chore.choreId)} title="Save">💾</button>
-                  <button onClick={() => setEditingChoreId(null)} title="Cancel">❌</button>
-                </div>
-              </>
-            ) : (
-              <>
-                {chore.choreText} — {chore.points} pts — Assigned to ID: {chore.assignedTo}
-                <div className="chore-actions">
-                  <button onClick={() => startEdit(chore)} title="Edit">✏️</button>
-                  <button onClick={() => toggleCompletion(chore)} title="Complete">✔️</button>
-                  <button onClick={() => handleDelete(chore.choreId)} title="Delete">🗑️</button>
-                </div>
-              </>
-            )}
-          </li>
-        ))}
+        {chores.map(chore => {
+          const assignedUser = childUsers.find(child => child.userId === chore.assignedTo);
+          const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
+
+          return (
+            <li key={chore.choreId} className="chore-list-item">
+              {editingChoreId === chore.choreId ? (
+                <>
+                  <input type="text" value={editedChore.choreText} onChange={e => setEditedChore({ ...editedChore, choreText: e.target.value })} />
+                  <input type="number" value={editedChore.points} onChange={e => setEditedChore({ ...editedChore, points: Number(e.target.value) })} />
+                  <input type="date" value={editedChore.dateAssigned} onChange={e => setEditedChore({ ...editedChore, dateAssigned: e.target.value })} />
+                  <select value={editedChore.assignedTo} onChange={e => setEditedChore({ ...editedChore, assignedTo: e.target.value })}>
+                    {childUsers.map(child => (
+                      <option key={child.userId} value={child.userId}>{child.username}</option>
+                    ))}
+                  </select>
+                  <div className="chore-actions">
+                    <button onClick={() => saveEdit(chore.choreId)} title="Save">💾</button>
+                    <button onClick={() => setEditingChoreId(null)} title="Cancel">❌</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {chore.choreText} — {chore.points} pts — Assigned to: {assignedUsername}
+                  <div className="chore-actions">
+                    <button onClick={() => startEdit(chore)} title="Edit">✏️</button>
+                    <button onClick={() => toggleCompletion(chore)} title="Complete">✔️</button>
+                    <button onClick={() => handleDelete(chore.choreId)} title="Delete">🗑️</button>
+                  </div>
+                </>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
-      <h3>Completed Chores (Last 7 Days)</h3>
+      <h3>Completed Chores</h3>
       <ul>
-        {completedChores.map(chore => (
-          <li key={chore.choreId} className="chore-list-item">
-            <span style={{ textDecoration: "line-through" }}>
-              {chore.choreText} — {chore.points} pts — Assigned to ID: {chore.assignedTo}
-            </span>
-            <div className="chore-actions">
-              <button onClick={() => toggleCompletion(chore)} title="Undo">🔄</button>
-            </div>
-          </li>
-        ))}
+        {completedChores.map(chore => {
+          const assignedUser = childUsers.find(child => child.userId === chore.assignedTo);
+          const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
+
+          return (
+            <li key={chore.completedId} className="chore-list-item">
+              <span style={{ textDecoration: "line-through" }}>
+                {chore.choreText} — {chore.points} pts — Assigned to: {assignedUsername}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

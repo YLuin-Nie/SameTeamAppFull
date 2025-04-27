@@ -110,8 +110,6 @@ export const addChild = async (email, parentId) => {
   }
 };
 
-// api.js
-
 export const fetchTeam = async (teamId) => {
   try {
     const response = await api.get(`/users/team/${teamId}`);
@@ -122,6 +120,24 @@ export const fetchTeam = async (teamId) => {
   }
 };
 
+export const moveChoreToCompleted = async (choreId) => {
+  try {
+    const response = await api.post(`/Chores/complete/${choreId}`);
+    return response.data;
+  } catch (err) {
+    console.error("moveChoreToCompleted error:", err.message);
+    throw err;
+  }
+};
 
+export const fetchCompletedChores = async () => {
+  try {
+    const response = await api.get('/CompletedChores');
+    return response.data;
+  } catch (error) {
+    console.error("fetchCompletedChores error:", error.message);
+    throw error;
+  }
+};
 
 
