@@ -1,3 +1,5 @@
+// File Name: ParentDashboard.js
+
 import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import '../Calendar.css';
@@ -10,6 +12,7 @@ function ParentDashboard() {
   const [tasksForSelectedDate, setTasksForSelectedDate] = useState([]);
   const [tasksForNext7Days, setTasksForNext7Days] = useState([]);
   const [children, setChildren] = useState([]);
+  const [childUsers, setChildUsers] = useState([]); // ✅ ADD THIS
   const [showAddChildForm, setShowAddChildForm] = useState(false);
   const [childEmail, setChildEmail] = useState('');
   const [teamName, setTeamName] = useState('');
@@ -34,6 +37,7 @@ function ParentDashboard() {
       }
 
       const childrenOnly = users.filter(u => u.role === 'Child' && u.parentId === currentUser.userId);
+      setChildUsers(childrenOnly); // ✅ SAVE THE CHILDREN!
 
       const enhancedChildren = childrenOnly.map(child => {
         const childChores = allChores.filter(c => c.assignedTo === child.userId && c.completed);
@@ -98,12 +102,10 @@ function ParentDashboard() {
   const handleAddChild = async (e) => {
     e.preventDefault();
     try {
-      console.log("Adding child with email:", childEmail);
       await addChild(childEmail, currentUser.userId);
-      console.log("Child added, refreshing children list...");
       setChildEmail('');
       setShowAddChildForm(false);
-      await loadChoresAndUsers(); // Re-fetch to get updated list
+      await loadChoresAndUsers();
     } catch (err) {
       console.error("Error adding child:", err);
       alert("Failed to add child. Please try again.");
@@ -161,15 +163,20 @@ function ParentDashboard() {
                 <p>No upcoming chores.</p>
               ) : (
                 <ul>
-                  {tasksForNext7Days.map(task => (
-                    <li key={task.choreId}>
-                      <strong>{task.choreText}</strong>
-                      <br />
-                      Assigned to: <span style={{ color: "#FFD700" }}>{task.assignedTo}</span>
-                      <br />
-                      Due: {new Date(task.dateAssigned).toDateString()}
-                    </li>
-                  ))}
+                  {tasksForNext7Days.map(task => {
+                    const assignedUser = childUsers.find(child => child.userId === task.assignedTo);
+                    const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
+
+                    return (
+                      <li key={task.choreId}>
+                        <strong>{task.choreText}</strong>
+                        <br />
+                        Assigned to: <span style={{ color: "#FFD700" }}>{assignedUsername}</span>
+                        <br />
+                        Due: {new Date(task.dateAssigned).toDateString()}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </>
@@ -180,13 +187,21 @@ function ParentDashboard() {
                 <p>No chores for this date.</p>
               ) : (
                 <ul>
-                  {tasksForSelectedDate.map(task => (
-                    <li key={task.choreId}>
-                      {task.choreText} - Assigned to: {task.assignedTo}
-                      <br />
-                      Due: {new Date(task.dateAssigned).toDateString()}
-                    </li>
-                  ))}
+                  {tasksForSelectedDate.map(task => {
+                    const assignedUser = childUsers.find(child => child.userId === task.assignedTo);
+                    const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
+
+                    return (
+                      <li key={task.choreId}>
+                        <strong>{task.choreText}</strong>
+                        <br />
+                        Assigned to: <span style={{ color: "#FFD700" }}>{assignedUsername}</span>
+                        <br />
+                        Due: {new Date(task.dateAssigned).toDateString()}
+                      </li>
+                    );
+                  })
+                }
                 </ul>
               )}
             </>

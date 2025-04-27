@@ -5,7 +5,7 @@ import Calendar from 'react-calendar';
 import '../Calendar.css';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../../utils/auth';
-import { fetchChores, completeChore } from '../../api/api';
+import { fetchChores, fetchTeam } from '../../api/api'; // ✨ fetchTeam added
 
 function ChildDashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -16,6 +16,7 @@ function ChildDashboard() {
   const [totalPoints, setTotalPoints] = useState(0);
   const [level, setLevel] = useState({});
   const [nextLevelThreshold, setNextLevelThreshold] = useState(0);
+  const [teamName, setTeamName] = useState(''); // ✨ Team Name added
 
   const currentUser = getCurrentUser();
   const navigate = useNavigate();
@@ -27,9 +28,8 @@ function ChildDashboard() {
 
       const earnedPoints = userChores.filter(c => c.completed).reduce((sum, c) => sum + c.points, 0);
       setPoints(earnedPoints);
-      setTotalPoints(earnedPoints); // Same for now, or split later
+      setTotalPoints(earnedPoints);
 
-      // Levels (you can centralize this later)
       const levels = [
         { min: 0, max: 200 },
         { min: 200, max: 400 },
@@ -42,7 +42,6 @@ function ChildDashboard() {
       setLevel({ level: levelIndex + 1, name: `Level ${levelIndex + 1}`, color: "#4CAF50" });
       setNextLevelThreshold(currentLevel?.max || 1000);
 
-      // Chores for next 7 days
       const today = new Date();
       const next7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(today);
@@ -57,8 +56,15 @@ function ChildDashboard() {
       }).sort((a, b) => new Date(a.dateAssigned) - new Date(b.dateAssigned));
 
       setTasksForNext7Days(upcoming);
+
+      // ✨ Fetch Team Name
+      if (currentUser?.teamId) {
+        const team = await fetchTeam(currentUser.teamId);
+        setTeamName(team.teamName);
+      }
+
     } catch (err) {
-      console.error("Failed to load chores:", err);
+      console.error("Failed to load chores or team:", err);
     }
   };
 
@@ -88,23 +94,15 @@ function ChildDashboard() {
     }
   };
 
-  const markChoreComplete = async (chore) => {
-    const updated = { ...chore, completed: true };
-    try {
-      await completeChore(chore.choreId, updated);
-      await loadChores();
-    } catch (err) {
-      console.error("Failed to complete chore:", err);
-      alert("Could not mark chore as completed.");
-    }
-  };
-
   return (
     <div className="dashboard child-dashboard">
       <h1>Child Dashboard</h1>
       <p className="welcome-message">Welcome, {currentUser ? currentUser.username : "Child"}!</p>
-      <p><strong>Total Points Earned:</strong> {totalPoints}</p>
-      <p><strong>Unspent Points:</strong> {points}</p>
+
+      <h2 style={{ color: "#FFD700" }}>Family Team: {teamName}</h2> {/* ✨ Team Display */}
+
+      <p><strong>Total Points Earned:</strong> {totalPoints} pts</p>
+      <p><strong>Unspent Points:</strong> {points} pts</p>
 
       <div className="level-badge" style={{ backgroundColor: level.color }}>
         {level.name}
@@ -121,20 +119,16 @@ function ChildDashboard() {
         <div className="tasks-section">
           {displayAllTasks ? (
             <>
-              <h3>Upcoming Chores (Next 7 Days)</h3>
+              <h3>My Upcoming Chores (Next 7 Days)</h3>
               {tasksForNext7Days.length === 0 ? (
                 <p>No upcoming chores.</p>
               ) : (
                 <ul>
                   {tasksForNext7Days.map(task => (
                     <li key={task.choreId}>
-                      <strong>{task.choreText}</strong>
-                      <br />
-                      Due: {new Date(task.dateAssigned).toDateString()}
-                      <br />
+                      <strong>{task.choreText}</strong><br />
+                      Due: {new Date(task.dateAssigned).toDateString()}<br />
                       Points: {task.points} pts
-                      <br />
-                      <button onClick={() => markChoreComplete(task)}>✔ Complete</button>
                     </li>
                   ))}
                 </ul>
@@ -149,13 +143,9 @@ function ChildDashboard() {
                 <ul>
                   {tasksForSelectedDate.map(task => (
                     <li key={task.choreId}>
-                      {task.choreText}
-                      <br />
-                      Due: {new Date(task.dateAssigned).toDateString()}
-                      <br />
+                      {task.choreText}<br />
+                      Due: {new Date(task.dateAssigned).toDateString()}<br />
                       Points: {task.points} pts
-                      <br />
-                      <button onClick={() => markChoreComplete(task)}>✔ Complete</button>
                     </li>
                   ))}
                 </ul>

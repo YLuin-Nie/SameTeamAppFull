@@ -140,4 +140,13 @@ export const fetchCompletedChores = async () => {
   }
 };
 
+export const undoCompletedChore = async (completedChoreId) => {
+  try {
+    const response = await api.post(`/CompletedChores/undo/${completedChoreId}`);
+    return response.data;
+  } catch (err) {
+    console.error("undoCompletedChore error:", err.message);
+    throw err;
+  }
+};
 

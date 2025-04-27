@@ -8,7 +8,8 @@ import {
   moveChoreToCompleted,
   deleteChore,
   fetchCompletedChores,
-  completeChore // <- make sure to import this!
+  completeChore,
+  undoCompletedChore // 👈 NEW: Import this!
 } from "../../api/api";
 
 const AddChore = () => {
@@ -68,16 +69,14 @@ const AddChore = () => {
     if (!chore.completed) {
       try {
         await moveChoreToCompleted(chore.choreId);
-        setChores(chores.filter(c => c.choreId !== chore.choreId));
+        const updatedChores = await fetchChores();
         const updatedCompleted = await fetchCompletedChores();
+        setChores(updatedChores);
         setCompletedChores(updatedCompleted);
       } catch (err) {
         console.error("Move chore to completed error:", err);
         alert("Failed to complete chore.");
       }
-    } else {
-      console.warn("Undoing a completed chore is not supported yet.");
-      alert("Undo is not supported yet.");
     }
   };
 
@@ -117,6 +116,19 @@ const AddChore = () => {
     } catch (err) {
       console.error("Error saving edited chore:", err);
       alert("Failed to save edits.");
+    }
+  };
+
+  const handleUndoCompletion = async (completedId) => {
+    try {
+      await undoCompletedChore(completedId);
+      const updatedChores = await fetchChores();
+      const updatedCompleted = await fetchCompletedChores();
+      setChores(updatedChores);
+      setCompletedChores(updatedCompleted);
+    } catch (err) {
+      console.error("Undo complete error:", err);
+      alert("Failed to undo completed chore.");
     }
   };
 
@@ -176,19 +188,27 @@ const AddChore = () => {
 
       <h3>Completed Chores</h3>
       <ul>
-        {completedChores.map(chore => {
-          const assignedUser = childUsers.find(child => child.userId === chore.assignedTo);
-          const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
+        {completedChores.length === 0 ? (
+          <p>No completed chores yet.</p>
+        ) : (
+          completedChores.map(chore => {
+            const assignedUser = childUsers.find(child => child.userId === chore.assignedTo);
+            const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
 
-          return (
-            <li key={chore.completedId} className="chore-list-item">
-              <span style={{ textDecoration: "line-through" }}>
-                {chore.choreText} — {chore.points} pts — Assigned to: {assignedUsername}
-              </span>
-            </li>
-          );
-        })}
+            return (
+              <li key={chore.completedId} className="chore-list-item">
+                <span style={{ textDecoration: "line-through" }}>
+                  {chore.choreText} — {chore.points} pts {assignedUsername !== "Unknown" ? `— Assigned to: ${assignedUsername}` : ""}
+                </span>
+                <div className="chore-actions">
+                  <button onClick={() => handleUndoCompletion(chore.completedId)} title="Undo">↩️ Undo</button>
+                </div>
+              </li>
+            );
+          })
+        )}
       </ul>
+
     </div>
   );
 };
