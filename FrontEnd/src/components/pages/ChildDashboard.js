@@ -5,7 +5,7 @@ import Calendar from 'react-calendar';
 import '../Calendar.css';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../../utils/auth';
-import { fetchChores, fetchTeam } from '../../api/api'; // ✨ fetchTeam added
+import { fetchChores, fetchTeam, joinTeam } from '../../api/api';
 
 function ChildDashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -16,7 +16,11 @@ function ChildDashboard() {
   const [totalPoints, setTotalPoints] = useState(0);
   const [level, setLevel] = useState({});
   const [nextLevelThreshold, setNextLevelThreshold] = useState(0);
-  const [teamName, setTeamName] = useState(''); // ✨ Team Name added
+  const [teamName, setTeamName] = useState('');
+  const [joinTeamName, setJoinTeamName] = useState('');
+  const [joinTeamPassword, setJoinTeamPassword] = useState('');
+  const [showJoinPassword, setShowJoinPassword] = useState(false);
+
 
   const currentUser = getCurrentUser();
   const navigate = useNavigate();
@@ -57,7 +61,7 @@ function ChildDashboard() {
 
       setTasksForNext7Days(upcoming);
 
-      // ✨ Fetch Team Name
+      // Fetch Team Name if available
       if (currentUser?.teamId) {
         const team = await fetchTeam(currentUser.teamId);
         setTeamName(team.teamName);
@@ -94,12 +98,58 @@ function ChildDashboard() {
     }
   };
 
+  const handleJoinTeam = async (e) => {
+    e.preventDefault();
+    try {
+      const joinedTeam = await joinTeam(currentUser.userId, joinTeamName, joinTeamPassword);
+      setTeamName(joinedTeam.teamName);
+      alert('Successfully joined the team!');
+    } catch (err) {
+      console.error("Failed to join team:", err);
+      alert('Failed to join team. Please check your Team Name and Password.');
+    }
+  };
+
   return (
     <div className="dashboard child-dashboard">
       <h1>Child Dashboard</h1>
       <p className="welcome-message">Welcome, {currentUser ? currentUser.username : "Child"}!</p>
 
-      <h2 style={{ color: "#FFD700" }}>Family Team: {teamName}</h2> {/* ✨ Team Display */}
+      <h2 style={{ color: "#FFD700" }}>Family Team: {teamName}</h2>
+
+      {!teamName && (
+        <div>
+          <h4>Join an Existing Family Team</h4>
+          <form onSubmit={handleJoinTeam}>
+            <label>Team Name:
+              <input
+                type="text"
+                value={joinTeamName}
+                onChange={(e) => setJoinTeamName(e.target.value)}
+                required
+              />
+            </label>
+            <br />
+            <label>Team Password:
+              <input
+                type={showJoinPassword ? "text" : "password"}
+                value={joinTeamPassword}
+                onChange={(e) => setJoinTeamPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowJoinPassword(!showJoinPassword)}
+                style={{ marginLeft: "10px" }}
+              >
+                {showJoinPassword ? "Hide" : "Show"}
+              </button>
+            </label>
+            <br />
+            <button type="submit">Join Team</button>
+          </form>
+        </div>
+      )}
 
       <p><strong>Total Points Earned:</strong> {totalPoints} pts</p>
       <p><strong>Unspent Points:</strong> {points} pts</p>

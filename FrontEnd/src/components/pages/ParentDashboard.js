@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import '../Calendar.css';
 import { getCurrentUser } from '../../utils/auth';
-import { fetchChores, fetchUsers, addChild, fetchTeam } from '../../api/api';
+import { fetchChores, fetchUsers, fetchTeam, createTeam, joinTeam, addUserToTeam } from '../../api/api';
 
 function ParentDashboard() {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -12,10 +12,19 @@ function ParentDashboard() {
   const [tasksForSelectedDate, setTasksForSelectedDate] = useState([]);
   const [tasksForNext7Days, setTasksForNext7Days] = useState([]);
   const [children, setChildren] = useState([]);
-  const [childUsers, setChildUsers] = useState([]); // ✅ ADD THIS
-  const [showAddChildForm, setShowAddChildForm] = useState(false);
-  const [childEmail, setChildEmail] = useState('');
   const [teamName, setTeamName] = useState('');
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [showAddToTeamForm, setShowAddToTeamForm] = useState(false);
+
+  const [createTeamName, setCreateTeamName] = useState('');
+  const [createTeamPassword, setCreateTeamPassword] = useState('');
+  const [joinTeamName, setJoinTeamName] = useState('');
+  const [joinTeamPassword, setJoinTeamPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [teamId, setTeamId] = useState('');
+
   const currentUser = getCurrentUser();
 
   const levels = [
@@ -36,20 +45,12 @@ function ParentDashboard() {
         setTeamName(team.teamName);
       }
 
-      const childrenOnly = users.filter(u => u.role === 'Child' && u.parentId === currentUser.userId);
-      setChildUsers(childrenOnly); // ✅ SAVE THE CHILDREN!
-
+      const childrenOnly = users.filter(u => u.role === 'Child' && u.teamId === currentUserData.teamId);
       const enhancedChildren = childrenOnly.map(child => {
         const childChores = allChores.filter(c => c.assignedTo === child.userId && c.completed);
         const points = childChores.reduce((sum, c) => sum + c.points, 0);
-
         const level = levels.find(l => points < l.max) || levels[levels.length - 1];
-
-        return {
-          ...child,
-          points,
-          level
-        };
+        return { ...child, points, level };
       });
 
       setChildren(enhancedChildren);
@@ -79,45 +80,128 @@ function ParentDashboard() {
     loadChoresAndUsers();
   }, [currentUser.userId]);
 
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    try {
+      const newTeam = await createTeam(currentUser.userId, createTeamName, createTeamPassword);
+      if (newTeam) {
+        setTeamName(newTeam.teamName);
+        alert('Team created successfully!');
+        setShowCreateForm(false);
+      }
+    } catch (err) {
+      console.error("Create team error:", err);
+      alert('Failed to create team.');
+    }
+  };
+
+  const handleJoinTeam = async (e) => {
+    e.preventDefault();
+    try {
+      const joinedTeam = await joinTeam(currentUser.userId, joinTeamName, joinTeamPassword);
+      if (joinedTeam) {
+        setTeamName(joinedTeam.teamName);
+        alert('Joined team successfully!');
+        setShowJoinForm(false);
+      }
+    } catch (err) {
+      console.error("Join team error:", err);
+      alert('Failed to join team.');
+    }
+  };
+
+  const handleAddUserToTeam = async (e) => {
+    e.preventDefault();
+    try {
+      await addUserToTeam(email, parseInt(teamId));
+      alert('User added to team successfully!');
+      setEmail('');
+      setTeamId('');
+      setShowAddToTeamForm(false);
+      await loadChoresAndUsers();
+    } catch (err) {
+      console.error("Error adding user to team:", err);
+      alert('Failed to add user to team.');
+    }
+  };
+
   const handleDateSelect = async (date) => {
     setSelectedDate(date);
     setDisplayAllTasks(false);
-
+  
     try {
-      const allChores = await fetchChores();
+      const [users, allChores] = await Promise.all([fetchUsers(), fetchChores()]);
+      const currentUserData = users.find(u => u.userId === currentUser.userId);
+      const childrenOnly = users.filter(u => u.role === 'Child' && u.teamId === currentUserData.teamId);
+      const childUserIds = childrenOnly.map(c => c.userId);
+  
       const selectedDateStr = date.toISOString().split('T')[0];
-
+  
       const filtered = allChores.filter(c => {
         if (!c.dateAssigned) return false;
+        if (!childUserIds.includes(c.assignedTo)) return false;
         const d = new Date(c.dateAssigned).toISOString().split('T')[0];
         return d === selectedDateStr;
       });
-
+  
       setTasksForSelectedDate(filtered.sort((a, b) => new Date(a.dateAssigned) - new Date(b.dateAssigned)));
     } catch (err) {
-      console.error("Error loading chores:", err);
+      console.error("Error filtering chores:", err);
     }
   };
-
-  const handleAddChild = async (e) => {
-    e.preventDefault();
-    try {
-      await addChild(childEmail, currentUser.userId);
-      setChildEmail('');
-      setShowAddChildForm(false);
-      await loadChoresAndUsers();
-    } catch (err) {
-      console.error("Error adding child:", err);
-      alert("Failed to add child. Please try again.");
-    }
-  };
+  
 
   return (
     <div className="dashboard parent-dashboard">
       <h1>Parent Dashboard</h1>
-      <p>Welcome, {currentUser?.username || "Parent"}! Manage your family's progress here.</p>
+      <p>Welcome, {currentUser?.username || "Parent"}!</p>
 
-      <h3>Team: {teamName}</h3>
+      <h3>Team: {teamName || "(None)"}</h3>
+
+      <div className="team-actions">
+        <button onClick={() => { setShowCreateForm(true); setShowJoinForm(false); setShowAddToTeamForm(false); }}>Create Team</button>
+        <button onClick={() => { setShowJoinForm(true); setShowCreateForm(false); setShowAddToTeamForm(false); }}>Join Team</button>
+        <button onClick={() => { setShowAddToTeamForm(true); setShowCreateForm(false); setShowJoinForm(false); }}>Add to Team</button>
+      </div>
+
+      {showCreateForm && (
+        <form onSubmit={handleCreateTeam}>
+          <h4>Create Team</h4>
+          <input type="text" placeholder="Team Name" value={createTeamName} onChange={(e) => setCreateTeamName(e.target.value)} required />
+          <input type="password" placeholder="Team Password" value={createTeamPassword} onChange={(e) => setCreateTeamPassword(e.target.value)} required />
+          <button type="submit">Create</button>
+        </form>
+      )}
+
+      {showJoinForm && (
+        <form onSubmit={handleJoinTeam}>
+          <h4>Join Team</h4>
+          <input type="text" placeholder="Team Name" value={joinTeamName} onChange={(e) => setJoinTeamName(e.target.value)} required />
+          <input type="password" placeholder="Team Password" value={joinTeamPassword} onChange={(e) => setJoinTeamPassword(e.target.value)} required />
+          <button type="submit">Join</button>
+        </form>
+      )}
+
+      {showAddToTeamForm && (
+        <form onSubmit={handleAddUserToTeam}>
+          <h4>Add User to Team</h4>
+          <input
+            type="email"
+            placeholder="User Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="number"
+            placeholder="Team ID"
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            required
+          />
+          <button type="submit">Add to Team</button>
+        </form>
+      )}
 
       <h3>Children's Levels</h3>
       <ul>
@@ -132,24 +216,6 @@ function ParentDashboard() {
         ))}
       </ul>
 
-      <button onClick={() => setShowAddChildForm(true)}>Add Child</button>
-
-      {showAddChildForm && (
-        <form onSubmit={handleAddChild}>
-          <label>
-            Child's Email:
-            <input
-              type="email"
-              value={childEmail}
-              onChange={(e) => setChildEmail(e.target.value)}
-              required
-            />
-          </label>
-          <button type="submit">Add</button>
-          <button type="button" onClick={() => setShowAddChildForm(false)}>Cancel</button>
-        </form>
-      )}
-
       <div className="calendar-tasks-container">
         <div className="calendar-section">
           <Calendar onChange={handleDateSelect} value={selectedDate} />
@@ -159,49 +225,30 @@ function ParentDashboard() {
           {displayAllTasks ? (
             <>
               <h3>Upcoming Chores (Next 7 Days)</h3>
-              {tasksForNext7Days.length === 0 ? (
-                <p>No upcoming chores.</p>
-              ) : (
+              {tasksForNext7Days.length === 0 ? <p>No upcoming chores.</p> : (
                 <ul>
-                  {tasksForNext7Days.map(task => {
-                    const assignedUser = childUsers.find(child => child.userId === task.assignedTo);
-                    const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
-
-                    return (
-                      <li key={task.choreId}>
-                        <strong>{task.choreText}</strong>
-                        <br />
-                        Assigned to: <span style={{ color: "#FFD700" }}>{assignedUsername}</span>
-                        <br />
-                        Due: {new Date(task.dateAssigned).toDateString()}
-                      </li>
-                    );
-                  })}
+                  {tasksForNext7Days.map(task => (
+                    <li key={task.choreId}>
+                      <strong>{task.choreText}</strong><br />
+                      Due: {new Date(task.dateAssigned).toDateString()}<br />
+                      Points: {task.points} pts
+                    </li>
+                  ))}
                 </ul>
               )}
             </>
           ) : (
             <>
               <h3>Chores for {selectedDate ? selectedDate.toDateString() : ''}</h3>
-              {tasksForSelectedDate.length === 0 ? (
-                <p>No chores for this date.</p>
-              ) : (
+              {tasksForSelectedDate.length === 0 ? <p>No chores for this date.</p> : (
                 <ul>
-                  {tasksForSelectedDate.map(task => {
-                    const assignedUser = childUsers.find(child => child.userId === task.assignedTo);
-                    const assignedUsername = assignedUser ? assignedUser.username : "Unknown";
-
-                    return (
-                      <li key={task.choreId}>
-                        <strong>{task.choreText}</strong>
-                        <br />
-                        Assigned to: <span style={{ color: "#FFD700" }}>{assignedUsername}</span>
-                        <br />
-                        Due: {new Date(task.dateAssigned).toDateString()}
-                      </li>
-                    );
-                  })
-                }
+                  {tasksForSelectedDate.map(task => (
+                    <li key={task.choreId}>
+                      {task.choreText}<br />
+                      Due: {new Date(task.dateAssigned).toDateString()}<br />
+                      Points: {task.points} pts
+                    </li>
+                  ))}
                 </ul>
               )}
             </>

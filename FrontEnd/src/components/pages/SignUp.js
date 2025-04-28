@@ -1,9 +1,11 @@
+// File Name: SignUp.js
+
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/signup.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
-import api from "../../api/api"; // Ensure this is correctly configured
+import api from "../../api/api";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -12,14 +14,11 @@ const SignUp = () => {
     username: "",
     email: "",
     password: "",
-    role: "",
-    team: "", // Default team
-    teamPassword: "", // New field for team password
+    role: ""
   });
 
   const [errors, setErrors] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showTeamPassword, setShowTeamPassword] = useState(false); // State for team password visibility
   const [loading, setLoading] = useState(false);
 
   const handleInputChange = useCallback((e) => {
@@ -35,8 +34,6 @@ const SignUp = () => {
     e.preventDefault();
     setLoading(true);
     setErrors("");
-
-    console.log("Submitting form data:", formData);
 
     try {
       await api.post("/Auth/register", formData);
@@ -112,39 +109,6 @@ const SignUp = () => {
             Child
           </button>
         </div>
-
-        {formData.role === 'Parent' && (
-          <div>
-            <label>
-              Team Name:
-              <input
-                type="text"
-                name="team"
-                value={formData.team}
-                onChange={handleInputChange}
-                placeholder="Enter your team name"
-              />
-            </label>
-            <div className="password-container">
-              <label>
-                Team Password:
-                <input
-                  type={showTeamPassword ? "text" : "password"}
-                  name="teamPassword"
-                  value={formData.teamPassword}
-                  onChange={handleInputChange}
-                  placeholder="Enter your team password"
-                />
-              </label>
-              <span
-                onClick={() => setShowTeamPassword(!showTeamPassword)}
-                className={`eye-icon ${showTeamPassword ? "open" : "closed"}`}
-              >
-                <FontAwesomeIcon icon={showTeamPassword ? faEye : faEyeSlash} />
-              </span>
-            </div>
-          </div>
-        )}
 
         <button type="submit" disabled={loading}>
           {loading ? "Processing..." : "Sign Up"}

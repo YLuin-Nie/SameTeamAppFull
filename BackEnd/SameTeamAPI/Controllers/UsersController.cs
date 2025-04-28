@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using SameTeamAPI.Models;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace SameTeamAPI.Controllers
         {
             return Ok("You are authenticated!");
         }
-        
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
@@ -79,26 +80,98 @@ namespace SameTeamAPI.Controllers
             return Ok(team);
         }
 
-        // ⭐ AddChild endpoint using ParentId (matches new User.cs structure)
-        [HttpPost("addChild")]
-        public async Task<IActionResult> AddChild([FromBody] AddChildRequest model)
+        [HttpPost("addUserToTeam")]
+        public async Task<IActionResult> AddUserToTeam([FromBody] AddUserToTeamRequest model)
         {
-            var parent = await _context.Users.FindAsync(model.ParentId);
-            if (parent == null)
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            if (user == null)
             {
-                return BadRequest("Parent not found.");
+                return BadRequest("User not found.");
             }
 
-            var child = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
-            if (child == null)
-            {
-                return BadRequest("Child with given email not found.");
-            }
-
-            child.ParentId = parent.UserId;
+            user.TeamId = model.TeamId;
             await _context.SaveChangesAsync();
 
-            return Ok(child);
+            return Ok(user);
         }
+
+
+
+        [HttpPost("joinTeam")]
+        public async Task<IActionResult> JoinTeam([FromBody] JoinTeamRequest model)
+        {
+            var user = await _context.Users.FindAsync(model.UserId);
+            if (user == null)
+            {
+                return BadRequest("User not found.");
+            }
+
+            var team = await _context.Teams.FirstOrDefaultAsync(t => t.TeamName.ToLower() == model.TeamName.ToLower());
+
+            if (team == null)
+            {
+                return BadRequest("Team not found.");
+            }
+
+            var hasher = new PasswordHasher<Team>();
+            var result = hasher.VerifyHashedPassword(null, team.TeamPassword, model.TeamPassword);
+
+            if (result == PasswordVerificationResult.Failed)
+            {
+                return BadRequest("Password incorrect.");
+            }
+
+            user.TeamId = team.TeamId;
+            await _context.SaveChangesAsync();
+
+            return Ok(team);
+        }
+
+        [HttpPost("createTeam")]
+        public async Task<IActionResult> CreateTeam([FromBody] CreateTeamRequest model)
+        {
+            var hasher = new PasswordHasher<Team>();
+
+            var newTeam = new Team
+            {
+                TeamName = model.TeamName,
+                TeamPassword = hasher.HashPassword(null, model.TeamPassword)
+            };
+
+            _context.Teams.Add(newTeam);
+            await _context.SaveChangesAsync();
+
+            var user = await _context.Users.FindAsync(model.UserId);
+            if (user == null)
+            {
+                return BadRequest("User not found.");
+            }
+
+            user.TeamId = newTeam.TeamId;
+            await _context.SaveChangesAsync();
+
+            return Ok(newTeam);
+        }
+
+        // DTOs
+        public class JoinTeamRequest
+        {
+            public int UserId { get; set; }
+            public string TeamName { get; set; } = null!;
+            public string TeamPassword { get; set; } = null!;
+        }
+
+        public class CreateTeamRequest
+        {
+            public int UserId { get; set; }
+            public string TeamName { get; set; } = null!;
+            public string TeamPassword { get; set; } = null!;
+        }
+
+        public class AddUserToTeamRequest
+        {
+            public string Email { get; set; }
+            public int TeamId { get; set; }
+    }
     }
 }
