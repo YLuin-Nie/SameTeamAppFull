@@ -1,3 +1,5 @@
+// File Name: ChoresController.cs
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SameTeamAPI.Models;
@@ -33,6 +35,11 @@ public class ChoresController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Chore>> CreateChore([FromBody] Chore chore)
     {
+        if (chore.Points <= 0 || chore.Points > 500)
+        {
+            return BadRequest("Chore points must be between 1 and 500.");
+        }
+
         _context.Chores.Add(chore);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetChore), new { id = chore.ChoreId }, chore);
@@ -68,6 +75,10 @@ public class ChoresController : ControllerBase
         if (chore == null)
             return NotFound();
 
+        var user = await _context.Users.FindAsync(chore.AssignedTo);
+        if (user == null)
+            return BadRequest("Assigned user not found.");
+
         var completedChore = new CompletedChore
         {
             ChoreId = chore.ChoreId,
@@ -75,13 +86,27 @@ public class ChoresController : ControllerBase
             Points = chore.Points,
             AssignedTo = chore.AssignedTo,
             DateAssigned = chore.DateAssigned,
-            CompletionDate = DateOnly.FromDateTime(DateTime.UtcNow) // Today's date
+            CompletionDate = DateOnly.FromDateTime(DateTime.UtcNow)
         };
 
         _context.CompletedChores.Add(completedChore);
         _context.Chores.Remove(chore);
+
+        // ✅ Update user's points
+        user.Points = (user.Points ?? 0) + chore.Points;
+        user.TotalPoints = (user.TotalPoints ?? 0) + chore.Points;
+
         await _context.SaveChangesAsync();
 
-        return Ok(completedChore);
+        // ✅ Return only a simple object to avoid JSON cycles
+        return Ok(new {
+            completedChore.CompletedId,
+            completedChore.ChoreId,
+            completedChore.ChoreText,
+            completedChore.Points,
+            completedChore.AssignedTo,
+            completedChore.DateAssigned,
+            completedChore.CompletionDate
+        });
     }
 }

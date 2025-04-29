@@ -91,7 +91,8 @@ export const deleteReward = async (rewardId) => {
 
 // Reward by posting a chore
 export const rewardAsChore = async (chore) => {
-  const res = await api.post('/Chores', chore);
+  const res = await api.post('/Chores', chore); // Step 1: create
+  // await api.post(`/Chores/complete/${res.data.choreId}`); // Step 2: complete it
   return res.data;
 };
 

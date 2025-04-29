@@ -9,6 +9,7 @@ import {
   deleteReward as deleteRewardAPI,
   rewardAsChore,
 } from "../../api/api";
+import { getCurrentUser } from "../../utils/auth";
 
 function ParentRewards() {
   const [children, setChildren] = useState([]);
@@ -28,7 +29,11 @@ function ParentRewards() {
     const loadData = async () => {
       try {
         const users = await fetchUsers();
-        setChildren(users.filter((u) => u.role === "Child"));
+        const currentUser = getCurrentUser();
+        const currentUserData = users.find(u => u.userId === currentUser.userId);
+
+        const teamChildren = users.filter(u => u.role === "Child" && u.teamId === currentUserData.teamId);
+        setChildren(teamChildren);
 
         const rewardsData = await fetchRewards();
         setRewards(rewardsData);
@@ -44,28 +49,31 @@ function ParentRewards() {
       alert("Please select a child, enter a reward, and set a valid point amount.");
       return;
     }
-
+  
+    const currentDate = new Date().toISOString().split('T')[0]; // e.g., '2025-04-29'
+  
+    const rewardChore = {
+      choreText: rewardChildName.trim(),
+      points: rewardChildPoints,
+      assignedTo: parseInt(selectedChild),
+      dateAssigned: currentDate,
+      completed: false
+    };
+    
     try {
-      const rewardChore = {
-        choreText: rewardChildName,
-        points: rewardChildPoints,
-        assignedTo: parseInt(selectedChild),
-        dateAssigned: new Date().toISOString(),
-        completed: true,
-      };
-
-      await rewardAsChore(rewardChore);
-      alert(`Rewarded ${rewardChildPoints} points to ${selectedChild} for ${rewardChildName}!`);
-
+      const result = await rewardAsChore(rewardChore);
+      const childUser = children.find(c => c.userId === parseInt(selectedChild));
+      const childName = childUser ? childUser.username : `user ${selectedChild}`;
+      alert(`Reward chore assigned to ${childName} for "${rewardChildName}"!`);
       setSelectedChild("");
       setRewardChildName("");
       setRewardChildPoints(10);
     } catch (err) {
-      console.error("Error rewarding child:", err);
-      alert("Failed to reward. Check backend.");
-    }
+      console.error("Error assigning chore:", err);
+      alert("Could not assign reward chore.");
+    }    
   };
-
+  
   const addReward = async () => {
     if (!newRewardName.trim() || newRewardPoints <= 0) {
       alert("Please enter a valid reward name and cost.");
@@ -89,13 +97,17 @@ function ParentRewards() {
 
   const saveEdit = async () => {
     try {
-      const updated = await updateReward(editingReward, {
-        id: editingReward,
+      await updateReward(editingReward, {
+        rewardId: editingReward,
         name: editedRewardName,
         cost: editedRewardCost,
       });
 
-      setRewards(rewards.map(r => (r.id === editingReward ? updated : r)));
+      setRewards(rewards.map(r =>
+        r.rewardId === editingReward
+          ? { ...r, name: editedRewardName, cost: editedRewardCost }
+          : r
+      ));
       setEditingReward(null);
       setEditedRewardName("");
       setEditedRewardCost(0);
@@ -107,7 +119,7 @@ function ParentRewards() {
   const deleteReward = async (id) => {
     try {
       await deleteRewardAPI(id);
-      setRewards(rewards.filter(r => r.id !== id));
+      setRewards(rewards.filter(r => r.rewardId !== id));
     } catch (err) {
       console.error("Failed to delete reward:", err);
     }
@@ -131,9 +143,9 @@ function ParentRewards() {
       <input type="text" value={rewardChildName} onChange={(e) => setRewardChildName(e.target.value)} placeholder="e.g., Extra Playtime" />
 
       <label>Points:</label>
-      <input type="number" value={rewardChildPoints} onChange={(e) => setRewardChildPoints(Number(e.target.value))} min="1" />
+      <input type="number" value={rewardChildPoints} onChange={(e) => setRewardChildPoints(Number(e.target.value))} min="1" max="500" />
 
-      <button onClick={rewardChild}>Reward Points</button>
+      <button onClick={rewardChild}>Assign Reward Task</button>
 
       <hr />
 
@@ -148,8 +160,8 @@ function ParentRewards() {
       <ul className="reward-list">
         {rewards.length === 0 ? <p>No rewards defined yet.</p> :
           rewards.map((reward) => (
-            <li key={reward.id} className="reward-item">
-              {editingReward === reward.id ? (
+            <li key={reward.rewardId} className="reward-item">
+              {editingReward === reward.rewardId ? (
                 <>
                   <input type="text" value={editedRewardName} onChange={(e) => setEditedRewardName(e.target.value)} />
                   <input type="number" value={editedRewardCost} onChange={(e) => setEditedRewardCost(Number(e.target.value))} />
@@ -161,11 +173,11 @@ function ParentRewards() {
                   <span>{reward.name} - {reward.cost} Points</span>
                   <div className="reward-actions">
                     <button onClick={() => {
-                      setEditingReward(reward.id);
+                      setEditingReward(reward.rewardId);
                       setEditedRewardName(reward.name);
                       setEditedRewardCost(reward.cost);
                     }}>✏️</button>
-                    <button onClick={() => deleteReward(reward.id)}>🗑️</button>
+                    <button onClick={() => deleteReward(reward.rewardId)}>🗑️</button>
                   </div>
                 </>
               )}

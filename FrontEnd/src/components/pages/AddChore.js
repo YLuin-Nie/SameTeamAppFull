@@ -1,6 +1,7 @@
 // File Name: AddChore.js
 
 import React, { useState, useEffect } from 'react';
+import { getCurrentUser } from "../../utils/auth";
 import {
   fetchChores,
   postChore,
@@ -9,7 +10,7 @@ import {
   deleteChore,
   fetchCompletedChores,
   completeChore,
-  undoCompletedChore // 👈 NEW: Import this!
+  undoCompletedChore
 } from "../../api/api";
 
 const AddChore = () => {
@@ -24,22 +25,30 @@ const AddChore = () => {
   const [editedChore, setEditedChore] = useState({});
 
   useEffect(() => {
-    const loadChoresAndUsers = async () => {
-      try {
-        const choresFromBackend = await fetchChores();
-        setChores(choresFromBackend);
-        const users = await fetchUsers();
-        const children = users.filter(user => user.role === "Child");
-        setChildUsers(children);
-
-        const completed = await fetchCompletedChores();
-        setCompletedChores(completed);
-      } catch (err) {
-        console.error("Failed to load chores or users:", err);
-      }
-    };
     loadChoresAndUsers();
   }, []);
+
+  const loadChoresAndUsers = async () => {
+    try {
+      const users = await fetchUsers();
+      const currentUser = getCurrentUser();
+      const currentUserData = users.find(u => u.userId === currentUser.userId);
+
+      const children = users.filter(user => user.role === "Child" && user.teamId === currentUserData.teamId);
+      setChildUsers(children);
+
+      const allChores = await fetchChores();
+      const teamChildUserIds = children.map(child => child.userId);
+      const choresFromBackend = allChores.filter(chore => teamChildUserIds.includes(chore.assignedTo));
+      setChores(choresFromBackend);
+
+      const completed = await fetchCompletedChores();
+      const completedFiltered = completed.filter(chore => teamChildUserIds.includes(chore.assignedTo));
+      setCompletedChores(completedFiltered);
+    } catch (err) {
+      console.error("Failed to load chores or users:", err);
+    }
+  };
 
   const addChore = async () => {
     if (newChore.trim() && assignedTo && choreDate) {
@@ -65,14 +74,27 @@ const AddChore = () => {
     }
   };
 
+  const reloadChoresFiltered = async () => {
+    const users = await fetchUsers();
+    const currentUser = getCurrentUser();
+    const currentUserData = users.find(u => u.userId === currentUser.userId);
+    const children = users.filter(user => user.role === "Child" && user.teamId === currentUserData.teamId);
+    const teamChildUserIds = children.map(child => child.userId);
+
+    const updatedChores = await fetchChores();
+    const filteredChores = updatedChores.filter(chore => teamChildUserIds.includes(chore.assignedTo));
+    setChores(filteredChores);
+
+    const updatedCompleted = await fetchCompletedChores();
+    const filteredCompleted = updatedCompleted.filter(chore => teamChildUserIds.includes(chore.assignedTo));
+    setCompletedChores(filteredCompleted);
+  };
+
   const toggleCompletion = async (chore) => {
     if (!chore.completed) {
       try {
         await moveChoreToCompleted(chore.choreId);
-        const updatedChores = await fetchChores();
-        const updatedCompleted = await fetchCompletedChores();
-        setChores(updatedChores);
-        setCompletedChores(updatedCompleted);
+        await reloadChoresFiltered();
       } catch (err) {
         console.error("Move chore to completed error:", err);
         alert("Failed to complete chore.");
@@ -122,10 +144,7 @@ const AddChore = () => {
   const handleUndoCompletion = async (completedId) => {
     try {
       await undoCompletedChore(completedId);
-      const updatedChores = await fetchChores();
-      const updatedCompleted = await fetchCompletedChores();
-      setChores(updatedChores);
-      setCompletedChores(updatedCompleted);
+      await reloadChoresFiltered();
     } catch (err) {
       console.error("Undo complete error:", err);
       alert("Failed to undo completed chore.");
@@ -208,7 +227,6 @@ const AddChore = () => {
           })
         )}
       </ul>
-
     </div>
   );
 };

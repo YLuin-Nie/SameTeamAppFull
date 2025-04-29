@@ -32,10 +32,16 @@ public class RewardsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Reward>> CreateReward(Reward reward)
     {
+        if (reward.Cost <= 0 || reward.Cost > 500)
+        {
+            return BadRequest("Reward cost must be between 1 and 500 points.");
+        }
+
         _context.Rewards.Add(reward);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetReward), new { id = reward.RewardId }, reward);
     }
+
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateReward(int id, Reward reward)
