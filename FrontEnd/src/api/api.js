@@ -1,4 +1,4 @@
-// api.js (Fully updated with labels)
+// File Name: api.js 
 
 import axios from 'axios';
 
@@ -21,96 +21,107 @@ api.interceptors.request.use((config) => {
 
 export default api;
 
-// -------------------- Chore APIs --------------------
+//
+// ==================================================
+// ✅ CHORE APIs
+// ==================================================
+//
 
-// Fetch all chores
+// 🔹 Fetch all active chores
 export const fetchChores = async () => {
   const response = await api.get('/Chores');
   return response.data;
 };
 
-// Post a new chore
+// 🔹 Post a new chore
 export const postChore = async (chore) => {
   const response = await api.post('/Chores', chore);
   return response.data;
 };
 
-// Complete an existing chore
+// 🔹 Update an existing chore (generic PUT)
 export const completeChore = async (choreId, updatedChore) => {
   const response = await api.put(`/Chores/${choreId}`, updatedChore);
   return response.data;
 };
 
-// Move chore to completed chores
+// 🔹 Move chore to CompletedChores
 export const moveChoreToCompleted = async (choreId) => {
   const response = await api.post(`/Chores/complete/${choreId}`);
   return response.data;
 };
 
-// Fetch completed chores
+// 🔹 Fetch all completed chores (new endpoint from ChoresController)
 export const fetchCompletedChores = async () => {
-  const response = await api.get('/CompletedChores');
+  const response = await api.get('/Chores/completed');
   return response.data;
 };
 
-// Undo a completed chore
+// 🔹 Undo completed chore — also subtracts points from user
 export const undoCompletedChore = async (completedChoreId) => {
-  const response = await api.post(`/CompletedChores/undo/${completedChoreId}`);
+  const response = await api.post(`/Chores/undoComplete/${completedChoreId}`);
   return response.data;
 };
 
-// Delete a chore
+// 🔹 Delete a chore
 export const deleteChore = async (choreId) => {
   await api.delete(`/Chores/${choreId}`);
 };
 
-// -------------------- Reward APIs --------------------
+//
+// ==================================================
+// ✅ REWARD APIs
+// ==================================================
+//
 
-// Fetch all rewards
+// 🔹 Fetch all rewards
 export const fetchRewards = async () => {
   const res = await api.get('/Rewards');
   return res.data;
 };
 
-// Post a new reward
+// 🔹 Post a new reward
 export const postReward = async (reward) => {
   const res = await api.post('/Rewards', reward);
   return res.data;
 };
 
-// Update an existing reward
+// 🔹 Update a reward
 export const updateReward = async (rewardId, reward) => {
   const res = await api.put(`/Rewards/${rewardId}`, reward);
   return res.data;
 };
 
-// Delete a reward
+// 🔹 Delete a reward
 export const deleteReward = async (rewardId) => {
   await api.delete(`/Rewards/${rewardId}`);
 };
 
-// Reward by posting a chore
+// 🔹 Reward a user by creating a chore
 export const rewardAsChore = async (chore) => {
-  const res = await api.post('/Chores', chore); // Step 1: create
-  // await api.post(`/Chores/complete/${res.data.choreId}`); // Step 2: complete it
+  const res = await api.post('/Chores', chore);
   return res.data;
 };
 
-// Fetch redeemed rewards for a user
+// 🔹 Fetch redeemed rewards
 export const fetchRedeemedRewards = async (userId) => {
   const res = await api.get(`/RedeemedRewards/${userId}`);
   return res.data;
 };
 
-// Post a new redeemed reward
+// 🔹 Redeem a reward
 export const postRedeemedReward = async (data) => {
   const res = await api.post(`/RedeemedRewards`, data);
   return res.data;
 };
 
-// -------------------- User APIs --------------------
+//
+// ==================================================
+// ✅ USER APIs
+// ==================================================
+//
 
-// Fetch all users
+// 🔹 Fetch all users
 export const fetchUsers = async () => {
   try {
     const response = await api.get('/Users');
@@ -121,19 +132,19 @@ export const fetchUsers = async () => {
   }
 };
 
-// Create/login user
+// 🔹 Login a user
 export const loginUser = async (email, password) => {
   const response = await api.post('/Auth/login', { email, password });
   return response.data;
 };
 
-// Update user details
+// 🔹 Update user info
 export const updateUser = async (userId, userData) => {
   const res = await api.put(`/Users/${userId}`, userData);
   return res.data;
 };
 
-// add child or parent to a team
+// 🔹 Add a user to a team
 export const addUserToTeam = async (email, teamId) => {
   const res = await api.post('/users/addUserToTeam', {
     email,
@@ -141,12 +152,20 @@ export const addUserToTeam = async (email, teamId) => {
   });
   return res.data;
 };
+// 🔹 Remove a user from a team
+export const removeUserFromTeam = async (userId) => {
+  const res = await api.post(`/users/removeFromTeam/${userId}`);
+  return res.data;
+};
 
 
+//
+// ==================================================
+// ✅ TEAM APIs
+// ==================================================
+//
 
-// -------------------- Team APIs --------------------
-
-// Fetch team details
+// 🔹 Fetch team details by ID
 export const fetchTeam = async (teamId) => {
   try {
     const response = await api.get(`/users/team/${teamId}`);
@@ -157,7 +176,7 @@ export const fetchTeam = async (teamId) => {
   }
 };
 
-// Join an existing team
+// 🔹 Join an existing team
 export const joinTeam = async (userId, teamName, teamPassword) => {
   const res = await api.post('/users/joinTeam', {
     userId,
@@ -167,7 +186,7 @@ export const joinTeam = async (userId, teamName, teamPassword) => {
   return res.data;
 };
 
-// Create a new team
+// 🔹 Create a new team
 export const createTeam = async (userId, teamName, teamPassword) => {
   const res = await api.post('/users/createTeam', {
     userId,

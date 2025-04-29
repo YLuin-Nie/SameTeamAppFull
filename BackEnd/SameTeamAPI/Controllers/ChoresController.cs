@@ -36,9 +36,7 @@ public class ChoresController : ControllerBase
     public async Task<ActionResult<Chore>> CreateChore([FromBody] Chore chore)
     {
         if (chore.Points <= 0 || chore.Points > 500)
-        {
             return BadRequest("Chore points must be between 1 and 500.");
-        }
 
         _context.Chores.Add(chore);
         await _context.SaveChangesAsync();
@@ -92,14 +90,13 @@ public class ChoresController : ControllerBase
         _context.CompletedChores.Add(completedChore);
         _context.Chores.Remove(chore);
 
-        // ✅ Update user's points
         user.Points = (user.Points ?? 0) + chore.Points;
         user.TotalPoints = (user.TotalPoints ?? 0) + chore.Points;
 
         await _context.SaveChangesAsync();
 
-        // ✅ Return only a simple object to avoid JSON cycles
-        return Ok(new {
+        return Ok(new
+        {
             completedChore.CompletedId,
             completedChore.ChoreId,
             completedChore.ChoreText,
@@ -109,4 +106,46 @@ public class ChoresController : ControllerBase
             completedChore.CompletionDate
         });
     }
+
+    [HttpPost("undoComplete/{completedChoreId}")]
+    public async Task<IActionResult> UndoComplete([FromRoute] int completedChoreId)
+    {
+        var completedChore = await _context.CompletedChores.FindAsync(completedChoreId);
+        if (completedChore == null)
+            return NotFound("Completed chore not found.");
+
+        var user = await _context.Users.FindAsync(completedChore.AssignedTo);
+        if (user == null)
+            return NotFound("User not found.");
+
+        user.Points = Math.Max(0, (user.Points ?? 0) - completedChore.Points);
+        user.TotalPoints = Math.Max(0, (user.TotalPoints ?? 0) - completedChore.Points);
+
+        var restoredChore = new Chore
+        {
+            ChoreText = completedChore.ChoreText,
+            Points = completedChore.Points,
+            AssignedTo = completedChore.AssignedTo,
+            DateAssigned = completedChore.DateAssigned,
+            Completed = false
+        };
+        _context.Chores.Add(restoredChore);
+        _context.CompletedChores.Remove(completedChore);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Chore undone and points updated.",
+            restoredChore.ChoreId,
+            restoredChore.ChoreText
+        });
+    }
+
+    [HttpGet("completed")]
+    public async Task<ActionResult<IEnumerable<CompletedChore>>> GetCompletedChores()
+    {
+        return await _context.CompletedChores.ToListAsync();
+    }
 }
+

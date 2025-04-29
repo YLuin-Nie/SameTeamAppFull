@@ -164,6 +164,20 @@ namespace SameTeamAPI.Controllers
             });
         }
 
+        [HttpPost("removeFromTeam/{userId}")]
+        public async Task<IActionResult> RemoveFromTeam(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound();
+
+            user.TeamId = null;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "User removed from team." });
+        }
+
+
 
 
         // DTOs
@@ -193,5 +207,6 @@ namespace SameTeamAPI.Controllers
             public int TeamId { get; set; }
             public string TeamName { get; set; } = null!;
         }
+
     }
 }

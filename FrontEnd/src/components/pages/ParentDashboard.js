@@ -4,14 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import '../Calendar.css';
 import { getCurrentUser } from '../../utils/auth';
-import {
-  fetchChores,
-  fetchCompletedChores,
-  fetchUsers,
-  fetchTeam,
-  createTeam,
-  joinTeam,
-  addUserToTeam
+import {fetchChores, fetchCompletedChores, fetchUsers,
+  fetchTeam, createTeam, joinTeam, addUserToTeam, removeUserFromTeam
 } from '../../api/api';
 
 function ParentDashboard() {
@@ -35,11 +29,12 @@ function ParentDashboard() {
   const currentUser = getCurrentUser();
 
   const levels = [
-    { min: 0, max: 200, name: "Beginner", color: "#ccc" },
-    { min: 200, max: 400, name: "Rising Star", color: "#aaf" },
-    { min: 400, max: 600, name: "Helper Pro", color: "#8f8" },
-    { min: 600, max: 1000, name: "Superstar", color: "#ffa" },
-    { min: 1000, max: 10000, name: "Legend", color: "#fc8" },
+    { level: 0, min: 0, max: 1, name: "Newbie", color: "#ccc" },
+    { level: 1, min: 1, max: 200, name: "Beginner", color: "#cc9" },
+    { level: 2, min: 200, max: 400, name: "Rising Star", color: "#aaf" },
+    { level: 3, min: 400, max: 600, name: "Helper Pro", color: "#8f8" },
+    { level: 4, min: 600, max: 1000, name: "Superstar", color: "#ffa" },
+    { level: 5, min: 1000, max: 10000, name: "Legend", color: "#fc8" },
   ];
 
   const loadChoresAndUsers = async () => {
@@ -58,13 +53,8 @@ function ParentDashboard() {
 
       const childrenOnly = users.filter(u => u.role === 'Child' && u.teamId === currentUserData.teamId);
       const enhancedChildren = childrenOnly.map(child => {
-        const childChores = allChores.filter(c => c.assignedTo === child.userId && c.completed);
         const childCompletedChores = allCompletedChores.filter(c => c.assignedTo === child.userId);
-
-        const pointsFromChores = childChores.reduce((sum, c) => sum + c.points, 0);
-        const pointsFromCompleted = childCompletedChores.reduce((sum, c) => sum + c.points, 0);
-        const points = pointsFromChores + pointsFromCompleted;
-
+        const points = childCompletedChores.reduce((sum, c) => sum + c.points, 0);
         const level = levels.find(l => points < l.max) || levels[levels.length - 1];
         return { ...child, points, level };
       });
@@ -120,7 +110,7 @@ function ParentDashboard() {
       setJoinTeamName('');
       setJoinTeamPassword('');
       setShowJoinForm(false);
-      await loadChoresAndUsers();  
+      await loadChoresAndUsers();
     } catch (err) {
       console.error("Join team error:", err);
       alert('Failed to join team.');
@@ -146,6 +136,19 @@ function ParentDashboard() {
     } catch (err) {
       console.error("Error adding user to team:", err);
       alert('Failed to add user to team.');
+    }
+  };
+
+  const handleRemoveFromTeam = async (userId) => {
+    if (window.confirm("Are you sure you want to remove this child from the team?")) {
+      try {
+        await removeUserFromTeam(userId);
+        alert("Child removed from team.");
+        await loadChoresAndUsers();
+      } catch (err) {
+        console.error("Error removing user:", err);
+        alert("Failed to remove child from team.");
+      }
     }
   };
 
@@ -187,19 +190,51 @@ function ParentDashboard() {
         <button onClick={() => { setShowAddToTeamForm(true); setShowCreateForm(false); setShowJoinForm(false); }}>Add to Team</button>
       </div>
 
-      {/* Forms... (unchanged) */}
+      {showCreateForm && (
+        <form onSubmit={handleCreateTeam}>
+          <h4>Create Team</h4>
+          <input type="text" placeholder="Team Name" value={createTeamName} onChange={(e) => setCreateTeamName(e.target.value)} required />
+          <input type="password" placeholder="Team Password" value={createTeamPassword} onChange={(e) => setCreateTeamPassword(e.target.value)} required />
+          <button type="submit">Create</button>
+        </form>
+      )}
+
+      {showJoinForm && (
+        <form onSubmit={handleJoinTeam}>
+          <h4>Join Team</h4>
+          <input type="text" placeholder="Team Name" value={joinTeamName} onChange={(e) => setJoinTeamName(e.target.value)} required />
+          <input type="password" placeholder="Team Password" value={joinTeamPassword} onChange={(e) => setJoinTeamPassword(e.target.value)} required />
+          <button type="submit">Join</button>
+        </form>
+      )}
+
+      {showAddToTeamForm && (
+        <form onSubmit={handleAddUserToTeam}>
+          <h4>Add User to Team</h4>
+          <input
+            type="email"
+            placeholder="User Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <button type="submit">Add to Team</button>
+        </form>
+      )}
 
       <h3>Children's Levels</h3>
       <ul>
         {children.map(child => (
-          <li key={child.userId} className="level-badge-container">
-            <span>{child.username} - </span>
-            <span className="level-badge" style={{ backgroundColor: child.level.color }}>
-              Level {levels.indexOf(child.level) + 1} - {child.level.name}
-            </span>
-            <span> ({child.points} pts)</span>
-          </li>
-        ))}
+            <li key={child.userId} className="level-badge-container">
+              <span>{child.username} - </span>
+              <span className="level-badge" style={{ backgroundColor: child.level.color }}>
+                Level {child.level.level} - {child.level.name}
+              </span>
+              <span> ({child.points} pts)</span>
+              <button onClick={() => handleRemoveFromTeam(child.userId)} >❌ Remove</button>
+             
+            </li>
+          ))}
       </ul>
 
       <div className="calendar-tasks-container">
