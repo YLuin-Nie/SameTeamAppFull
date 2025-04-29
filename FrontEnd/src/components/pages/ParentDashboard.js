@@ -23,7 +23,6 @@ function ParentDashboard() {
   const [joinTeamName, setJoinTeamName] = useState('');
   const [joinTeamPassword, setJoinTeamPassword] = useState('');
   const [email, setEmail] = useState('');
-  const [teamId, setTeamId] = useState('');
 
   const currentUser = getCurrentUser();
 
@@ -99,24 +98,35 @@ function ParentDashboard() {
     e.preventDefault();
     try {
       const joinedTeam = await joinTeam(currentUser.userId, joinTeamName, joinTeamPassword);
-      if (joinedTeam) {
-        setTeamName(joinedTeam.teamName);
-        alert('Joined team successfully!');
-        setShowJoinForm(false);
-      }
+      alert('Joined team successfully!');
+      setTeamName(joinedTeam.teamName);
+      setJoinTeamName('');
+      setJoinTeamPassword('');
+      setShowJoinForm(false);
+      await loadChoresAndUsers();  
     } catch (err) {
       console.error("Join team error:", err);
       alert('Failed to join team.');
     }
   };
+  
+  
+  
 
   const handleAddUserToTeam = async (e) => {
     e.preventDefault();
     try {
-      await addUserToTeam(email, parseInt(teamId));
+      const users = await fetchUsers();
+      const currentUserData = users.find(u => u.userId === currentUser.userId);
+
+      if (!currentUserData || !currentUserData.teamId) {
+        alert('You must be part of a team to add users.');
+        return;
+      }
+
+      await addUserToTeam(email, currentUserData.teamId);
       alert('User added to team successfully!');
       setEmail('');
-      setTeamId('');
       setShowAddToTeamForm(false);
       await loadChoresAndUsers();
     } catch (err) {
@@ -128,28 +138,27 @@ function ParentDashboard() {
   const handleDateSelect = async (date) => {
     setSelectedDate(date);
     setDisplayAllTasks(false);
-  
+
     try {
       const [users, allChores] = await Promise.all([fetchUsers(), fetchChores()]);
       const currentUserData = users.find(u => u.userId === currentUser.userId);
       const childrenOnly = users.filter(u => u.role === 'Child' && u.teamId === currentUserData.teamId);
       const childUserIds = childrenOnly.map(c => c.userId);
-  
+
       const selectedDateStr = date.toISOString().split('T')[0];
-  
+
       const filtered = allChores.filter(c => {
         if (!c.dateAssigned) return false;
         if (!childUserIds.includes(c.assignedTo)) return false;
         const d = new Date(c.dateAssigned).toISOString().split('T')[0];
         return d === selectedDateStr;
       });
-  
+
       setTasksForSelectedDate(filtered.sort((a, b) => new Date(a.dateAssigned) - new Date(b.dateAssigned)));
     } catch (err) {
       console.error("Error filtering chores:", err);
     }
   };
-  
 
   return (
     <div className="dashboard parent-dashboard">
@@ -190,13 +199,6 @@ function ParentDashboard() {
             placeholder="User Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Team ID"
-            value={teamId}
-            onChange={(e) => setTeamId(e.target.value)}
             required
           />
           <button type="submit">Add to Team</button>

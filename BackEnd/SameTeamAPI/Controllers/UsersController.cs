@@ -114,7 +114,7 @@ namespace SameTeamAPI.Controllers
             }
 
             var hasher = new PasswordHasher<Team>();
-            var result = hasher.VerifyHashedPassword(null, team.TeamPassword, model.TeamPassword);
+            var result = hasher.VerifyHashedPassword(team, team.TeamPassword, model.TeamPassword);
 
             if (result == PasswordVerificationResult.Failed)
             {
@@ -124,8 +124,14 @@ namespace SameTeamAPI.Controllers
             user.TeamId = team.TeamId;
             await _context.SaveChangesAsync();
 
-            return Ok(team);
+            // ✅ Return simplified team data to avoid circular JSON
+            return Ok(new TeamDto
+            {
+                TeamId = team.TeamId,
+                TeamName = team.TeamName
+            });
         }
+
 
         [HttpPost("createTeam")]
         public async Task<IActionResult> CreateTeam([FromBody] CreateTeamRequest model)
@@ -134,9 +140,9 @@ namespace SameTeamAPI.Controllers
 
             var newTeam = new Team
             {
-                TeamName = model.TeamName,
-                TeamPassword = hasher.HashPassword(null, model.TeamPassword)
+                TeamName = model.TeamName
             };
+            newTeam.TeamPassword = hasher.HashPassword(newTeam, model.TeamPassword);
 
             _context.Teams.Add(newTeam);
             await _context.SaveChangesAsync();
@@ -150,8 +156,15 @@ namespace SameTeamAPI.Controllers
             user.TeamId = newTeam.TeamId;
             await _context.SaveChangesAsync();
 
-            return Ok(newTeam);
+            // ✅ Return only simplified data to avoid circular error
+            return Ok(new TeamDto
+            {
+                TeamId = newTeam.TeamId,
+                TeamName = newTeam.TeamName
+            });
         }
+
+
 
         // DTOs
         public class JoinTeamRequest
@@ -172,6 +185,13 @@ namespace SameTeamAPI.Controllers
         {
             public string Email { get; set; }
             public int TeamId { get; set; }
-    }
+        }
+
+        // ✅ NEW DTO for clean response
+        public class TeamDto
+        {
+            public int TeamId { get; set; }
+            public string TeamName { get; set; } = null!;
+        }
     }
 }
