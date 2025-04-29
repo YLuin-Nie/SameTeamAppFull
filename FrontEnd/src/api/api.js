@@ -144,6 +144,13 @@ export const updateUser = async (userId, userData) => {
   return res.data;
 };
 
+// 🔹 Update user Points
+export const updateUserPoints = async (userId, newPoints) => {
+  const response = await api.put(`/Users/${userId}/points`, { points: newPoints });
+  return response.data;
+};
+
+
 // 🔹 Add a user to a team
 export const addUserToTeam = async (email, teamId) => {
   const res = await api.post('/users/addUserToTeam', {

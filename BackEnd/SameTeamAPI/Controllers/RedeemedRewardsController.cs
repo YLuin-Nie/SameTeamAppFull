@@ -1,8 +1,9 @@
-// File Nme: RedeemedRewardsController.cs
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SameTeamAPI.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SameTeamAPI.Controllers
 {
@@ -27,34 +28,32 @@ namespace SameTeamAPI.Controllers
                 .ToListAsync();
         }
 
-        // GET: api/RedeemedRewards/5
+        // GET: api/RedeemedRewards/{userId}
         [HttpGet("{userId}")]
         public async Task<ActionResult<IEnumerable<RedeemedReward>>> GetRedeemedRewardsByUser(int userId)
         {
             var userRewards = await _context.RedeemedRewards
-                .Include(r => r.Reward)
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.DateRedeemed)
                 .ToListAsync();
-
-            if (userRewards == null || userRewards.Count == 0)
-            {
-                return NotFound();
-            }
 
             return userRewards;
         }
 
         // POST: api/RedeemedRewards
         [HttpPost]
-        public async Task<ActionResult<RedeemedReward>> PostRedeemedReward(RedeemedReward reward)
+        public async Task<ActionResult<RedeemedReward>> PostRedeemedReward(RedeemedReward redeemedReward)
         {
-            reward.DateRedeemed = DateTime.UtcNow;
+            // ✅ Auto-set today if no date provided
+            if (redeemedReward.DateRedeemed == default)
+            {
+                redeemedReward.DateRedeemed = DateOnly.FromDateTime(DateTime.UtcNow);
+            }
 
-            _context.RedeemedRewards.Add(reward);
+            _context.RedeemedRewards.Add(redeemedReward);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetRedeemedRewardsByUser), new { userId = reward.UserId }, reward);
+            return CreatedAtAction(nameof(GetRedeemedRewardsByUser), new { userId = redeemedReward.UserId }, redeemedReward);
         }
     }
 }

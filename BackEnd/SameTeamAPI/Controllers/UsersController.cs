@@ -177,6 +177,28 @@ namespace SameTeamAPI.Controllers
             return Ok(new { message = "User removed from team." });
         }
 
+        // PUT: api/Users/{userId}/points
+        [HttpPut("{userId}/points")]
+        public async Task<IActionResult> UpdateUserPoints(int userId, [FromBody] UpdatePointsRequest request)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            user.Points = request.Points;
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // DTO class to receive Points
+        public class UpdatePointsRequest
+        {
+            public int Points { get; set; }
+        }
+
 
 
 
@@ -207,6 +229,8 @@ namespace SameTeamAPI.Controllers
             public int TeamId { get; set; }
             public string TeamName { get; set; } = null!;
         }
+
+        
 
     }
 }

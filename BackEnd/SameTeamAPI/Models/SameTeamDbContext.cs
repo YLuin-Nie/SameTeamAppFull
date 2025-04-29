@@ -59,22 +59,19 @@ public partial class SameTeamDbContext : DbContext
 
         modelBuilder.Entity<RedeemedReward>(entity =>
         {
-            entity.HasKey(e => e.RedemptionId).HasName("PK__Redeemed__410680D1B1B14DD7");
+            entity.HasKey(e => e.RedemptionId).HasName("PK__Redeemed__410680D151C0364A");
 
             entity.Property(e => e.RedemptionId).HasColumnName("RedemptionID");
-            entity.Property(e => e.DateRedeemed)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
             entity.Property(e => e.RewardId).HasColumnName("RewardID");
             entity.Property(e => e.UserId).HasColumnName("UserID");
 
             entity.HasOne(d => d.Reward).WithMany(p => p.RedeemedRewards)
                 .HasForeignKey(d => d.RewardId)
-                .HasConstraintName("FK__RedeemedR__Rewar__48CFD27E");
+                .HasConstraintName("FK__RedeemedR__Rewar__03F0984C");
 
             entity.HasOne(d => d.User).WithMany(p => p.RedeemedRewards)
                 .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__RedeemedR__UserI__47DBAE45");
+                .HasConstraintName("FK__RedeemedR__UserI__02FC7413");
         });
 
         modelBuilder.Entity<Reward>(entity =>

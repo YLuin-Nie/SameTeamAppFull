@@ -1,11 +1,12 @@
-// File Name: ChildRewards.js
+// File name: ChildRewards.js
 
 import React, { useState, useEffect } from "react";
 import {
+  fetchUsers,
   fetchRewards,
-  rewardAsChore,
   fetchRedeemedRewards,
-  postRedeemedReward
+  postRedeemedReward,
+  updateUserPoints
 } from "../../api/api";
 import { getCurrentUser } from "../../utils/auth";
 
@@ -16,69 +17,56 @@ function ChildRewards() {
   const currentUser = getCurrentUser();
 
   useEffect(() => {
-    if (!currentUser) return;
-
     const loadData = async () => {
       try {
-        const rewardList = await fetchRewards();
-        setRewards(rewardList);
+        const [usersData, rewardsData, redeemedData] = await Promise.all([
+          fetchUsers(),
+          fetchRewards(),
+          fetchRedeemedRewards(currentUser.userId)
+        ]);
 
-        const redeemedList = await fetchRedeemedRewards(currentUser.userId);
-        setRedeemedRewards(redeemedList);
-
-        // Fetch chores directly using fetchRewards (or create fetchChores API if preferred)
-        const choreRes = await fetch("/api/Chores");
-        const allChores = await choreRes.json();
-
-        const userChores = allChores.filter(
-          c => c.assignedTo === currentUser.userId && c.completed
-        );
-
-        const totalEarned = userChores.reduce((sum, c) => sum + c.points, 0);
-        const spent = redeemedList.reduce((sum, r) => sum + r.pointsSpent, 0);
-        setPoints(totalEarned - spent);
+        const user = usersData.find(u => u.userId === currentUser.userId);
+        setPoints(user?.points || 0);
+        setRewards(rewardsData);
+        setRedeemedRewards(redeemedData);
       } catch (err) {
-        console.error("Failed to load rewards or history:", err);
+        console.error("Failed to load user or rewards:", err);
       }
     };
 
     loadData();
-  }, [currentUser]);
+  }, []);
 
-  const purchaseReward = async (reward) => {
+  const handleRedeem = async (reward) => {
     if (points < reward.cost) {
-      alert("Not enough points.");
+      alert("Not enough points to redeem this reward.");
       return;
     }
 
     try {
-      // Add reward as a negative chore (optional but useful for audit)
-      const rewardChore = {
-        choreText: `[Reward] ${reward.name}`,
-        points: -reward.cost,
-        assignedTo: currentUser.userId,
-        dateAssigned: new Date().toISOString(),
-        completed: true
-      };
-      await rewardAsChore(rewardChore);
-
-      // Log to redeemed rewards table
-      const newRedemption = {
+      const redemption = {
         userId: currentUser.userId,
-        rewardId: reward.id,
+        rewardId: reward.rewardId,
         rewardName: reward.name,
         pointsSpent: reward.cost,
-        dateRedeemed: new Date().toISOString()
+        dateRedeemed: new Date().toISOString().split('T')[0] // Only YYYY-MM-DD
       };
-      await postRedeemedReward(newRedemption);
+
+      // ✅ Send to backend and capture real response
+      const savedRedemption = await postRedeemedReward(redemption);
+
+      // ✅ Update backend points
+      const updatedPoints = points - reward.cost;
+      await updateUserPoints(currentUser.userId, updatedPoints);
+
+      // ✅ Update frontend
+      setPoints(updatedPoints);
+      setRedeemedRewards(prev => [savedRedemption, ...prev]);
 
       alert(`You redeemed: ${reward.name}`);
-      // Reload history
-      const updated = await fetchRedeemedRewards(currentUser.userId);
-      setRedeemedRewards(updated);
     } catch (err) {
-      console.error("Failed to redeem:", err);
-      alert("Could not redeem reward.");
+      console.error("Failed to redeem reward:", err);
+      alert("Could not complete redemption.");
     }
   };
 
@@ -87,18 +75,20 @@ function ChildRewards() {
       <h2>Available Rewards</h2>
       <p><strong>Unspent Points:</strong> {points}</p>
 
-      {rewards.length === 0 ? (
-        <p>No rewards available.</p>
-      ) : (
-        <ul>
-          {rewards.map((reward) => (
-            <li key={reward.id}>
-              {reward.name} - {reward.cost} Points
-              <button onClick={() => purchaseReward(reward)}>Redeem</button>
+      <ul className="reward-list">
+        {rewards.length === 0 ? (
+          <p>No rewards available.</p>
+        ) : (
+          rewards.map((reward) => (
+            <li key={reward.rewardId} className="reward-item">
+              <span>{reward.name} - {reward.cost} Points</span>
+              <div className="reward-actions">
+                <button onClick={() => handleRedeem(reward)}>Redeem</button>
+              </div>
             </li>
-          ))}
-        </ul>
-      )}
+          ))
+        )}
+      </ul>
 
       <hr />
 
@@ -106,10 +96,10 @@ function ChildRewards() {
       {redeemedRewards.length === 0 ? (
         <p>You haven't redeemed any rewards yet.</p>
       ) : (
-        <ul>
+        <ul className="redeemed-list">
           {redeemedRewards.map((reward) => (
             <li key={reward.redemptionId}>
-              {reward.rewardName} - {reward.pointsSpent} Points
+              {reward.rewardName || reward.name} - {reward.pointsSpent} Points
               <br />
               <small>Redeemed on: {new Date(reward.dateRedeemed).toLocaleDateString()}</small>
             </li>

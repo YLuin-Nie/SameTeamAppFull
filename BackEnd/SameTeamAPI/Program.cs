@@ -3,6 +3,7 @@ using SameTeamAPI.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization; // ✅ Add this
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,6 +63,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// ✅ AddControllers with cycle handling
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });
+
+builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -72,14 +82,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-
 var app = builder.Build();
 
 // ✅ Swagger UI Middleware
 if (app.Environment.IsDevelopment())
-{   
+{
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
@@ -88,15 +95,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-
 // ✅ Middleware: ⬇️ VERY IMPORTANT ORDER
-app.UseRouting();                      // <-- Make sure routing is enabled before anything
-app.UseCors("AllowFrontend");         // <-- CORS before any redirection or auth
-// app.UseHttpsRedirection();        // keep this OFF for now
+app.UseRouting();
+app.UseCors("AllowFrontend");
+// app.UseHttpsRedirection(); // ✅ keep OFF for now during localhost testing
 app.UseAuthorization();
 app.MapControllers();
 
-
-
-
 app.Run();
+

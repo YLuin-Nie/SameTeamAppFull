@@ -13,7 +13,7 @@ public partial class RedeemedReward
 
     public int PointsSpent { get; set; }
 
-    public DateTime? DateRedeemed { get; set; }
+    public DateOnly DateRedeemed { get; set; }
 
     public virtual Reward? Reward { get; set; }
 

@@ -3,100 +3,103 @@
 import React, { useState, useEffect } from 'react';
 import {
   fetchChores,
-  completeChore as completeChoreAPI,
+  fetchCompletedChores,
+  moveChoreToCompleted,
+  undoCompletedChore
 } from '../../api/api';
+import { getCurrentUser } from '../../utils/auth';
 
 const ChoresList = () => {
-  const [chores, setChores] = useState({ pendingChores: [], completedChores: [] });
+  const [pendingChores, setPendingChores] = useState([]);
+  const [completedChores, setCompletedChores] = useState([]);
   const [points, setPoints] = useState(0);
   const [completionPercentage, setCompletionPercentage] = useState(0);
 
-  const currentUser = JSON.parse(localStorage.getItem('loggedInUser'));
-
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 7);
+  const currentUser = getCurrentUser();
 
   const loadChores = async () => {
     try {
-      const allChores = await fetchChores();
-      const userChores = allChores.filter(
-        (chore) => chore.assignedTo === currentUser.userId
-      );
+      const [active, completed] = await Promise.all([
+        fetchChores(),
+        fetchCompletedChores()
+      ]);
 
-      const pending = userChores.filter((c) => !c.completed);
-      const completed = userChores.filter(
-        (c) => c.completed && new Date(c.dateAssigned) >= sevenDaysAgo
-      );
+      const userPending = active.filter(c => c.assignedTo === currentUser.userId);
+      const userCompleted = completed.filter(c => c.assignedTo === currentUser.userId);
 
-      setChores({ pendingChores: pending, completedChores: completed });
+      setPendingChores(userPending);
+      setCompletedChores(userCompleted);
 
-      const totalPoints = completed.reduce((sum, c) => sum + c.points, 0);
-      setPoints(totalPoints);
+      const totalChores = userPending.length + userCompleted.length;
+      setPoints(userCompleted.reduce((sum, c) => sum + c.points, 0));
       setCompletionPercentage(
-        userChores.length > 0
-          ? Math.round((completed.length / userChores.length) * 100)
-          : 0
+        totalChores > 0 ? Math.round((userCompleted.length / totalChores) * 100) : 0
       );
     } catch (err) {
-      console.error('Failed to load chores:', err);
+      console.error("Failed to load chores:", err);
     }
   };
 
   useEffect(() => {
     if (currentUser) loadChores();
-  }, [currentUser]);
+  }, [currentUser.userId]);
 
-  const toggleChoreCompletion = async (chore) => {
-    const updated = { ...chore, completed: !chore.completed };
+  const handleComplete = async (choreId) => {
     try {
-      await completeChoreAPI(chore.choreId, updated);
+      await moveChoreToCompleted(choreId);
       await loadChores();
     } catch (err) {
-      console.error("Failed to update chore status:", err);
-      alert("Unable to update chore. Try again.");
+      console.error("Failed to complete chore:", err);
+      alert("Error completing chore.");
+    }
+  };
+
+  const handleUndo = async (completedId) => {
+    try {
+      await undoCompletedChore(completedId);
+      await loadChores();
+    } catch (err) {
+      console.error("Failed to undo chore:", err);
+      alert("Error undoing chore.");
     }
   };
 
   return (
     <div className="chores-list-container">
       <h2>Your Chores</h2>
-      <p><strong>Your Points:</strong> {points}</p>
-
-      <p><strong>Task Completion Progress:</strong> {completionPercentage}%</p>
+      <p><strong>Points:</strong> {points}</p>
+      <p><strong>Task Completion:</strong> {completionPercentage}%</p>
       <progress value={completionPercentage} max="100"></progress>
 
-      {/* Pending */}
       <h3>Pending Chores</h3>
-      {chores.pendingChores.length === 0 ? (
-        <p>No pending chores assigned.</p>
+      {pendingChores.length === 0 ? (
+        <p>No pending chores.</p>
       ) : (
         <ul>
-          {chores.pendingChores.map((chore) => (
+          {pendingChores.map(chore => (
             <li key={chore.choreId}>
-              {chore.choreText} ({chore.points} pts)
+              <strong>{chore.choreText}</strong> ({chore.points} pts)
               <br />
               <small>Due: {new Date(chore.dateAssigned).toDateString()}</small>
               <br />
-              <button onClick={() => toggleChoreCompletion(chore)}>✔️ Complete</button>
+              <button onClick={() => handleComplete(chore.choreId)}>✔️ Complete</button>
             </li>
           ))}
         </ul>
       )}
 
-      {/* Completed */}
-      <h3>Completed Chores (Last 7 Days)</h3>
-      {chores.completedChores.length === 0 ? (
-        <p>No completed chores in the last 7 days.</p>
+      <h3>Completed Chores</h3>
+      {completedChores.length === 0 ? (
+        <p>No completed chores.</p>
       ) : (
         <ul>
-          {chores.completedChores.map((chore) => (
-            <li key={chore.choreId} style={{ textDecoration: 'line-through' }}>
-              {chore.choreText} ({chore.points} pts)
+          {completedChores.map(chore => (
+            <li key={chore.completedId} style={{ textDecoration: 'line-through' }}>
+              <strong>{chore.choreText}</strong> ({chore.points} pts)
               <br />
-              <small>Completed on: {new Date(chore.dateAssigned).toDateString()}</small>
+              <small>Completed: {new Date(chore.dateAssigned).toDateString()}</small>
               <br />
-              <button onClick={() => toggleChoreCompletion(chore)}>🔄 Undo</button>
+              <button onClick={() => handleUndo(chore.completedId)}>↩️ Undo</button>
             </li>
           ))}
         </ul>
