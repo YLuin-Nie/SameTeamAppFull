@@ -1,13 +1,13 @@
 // File Name: api.js 
 
+
 import axios from 'axios';
 
-const FORCE_HTTP = true;
+// ✅ Use environment variable for API base URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5073/api';
 
 const api = axios.create({
-  baseURL: FORCE_HTTP
-    ? 'http://localhost:5073/api'
-    : `${window.location.protocol}//localhost:5073/api`,
+  baseURL: API_BASE_URL,
 });
 
 // Attach token if available
