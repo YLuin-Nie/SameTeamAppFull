@@ -17,90 +17,116 @@ GO
 /********************************************************
 * This section creates the Tables
 *********************************************************/
--- Teams Table
-CREATE TABLE Teams (
-    TeamID INT IDENTITY(1,1) PRIMARY KEY,
-    TeamName NVARCHAR(100) NOT NULL UNIQUE,
-	TeamPassword NVARCHAR(100) NOT NULL DEFAULT ''
-);
+/****** Object:  Table [dbo].[Chores]    Script Date: 4/29/2025 4:50:36 PM ******/
+SET ANSI_NULLS ON
 GO
-
--- Users Table
-CREATE TABLE Users (
-    UserID INT IDENTITY(1,1) PRIMARY KEY,
-    Username NVARCHAR(50) NOT NULL,
-    Email NVARCHAR(100) NOT NULL UNIQUE,
-    PasswordHash NVARCHAR(255) NOT NULL,
-    Role NVARCHAR(10) CHECK (Role IN ('Parent', 'Child')) NOT NULL,
-    Points INT DEFAULT 0,
-    TotalPoints INT DEFAULT 0,
-    TeamID INT FOREIGN KEY REFERENCES Teams(TeamID)
-);
+SET QUOTED_IDENTIFIER ON
 GO
-
--- Chores Table
-CREATE TABLE Chores (
-    ChoreID INT IDENTITY(1,1) PRIMARY KEY,
-    ChoreText NVARCHAR(255) NOT NULL,
-    Points INT NOT NULL DEFAULT 5,
-    AssignedTo INT FOREIGN KEY REFERENCES Users(UserID),
-    DateAssigned DATE NOT NULL,
-    Completed BIT DEFAULT 0
-);
+CREATE TABLE [dbo].[Chores](
+	[ChoreID] [int] IDENTITY(1,1) NOT NULL,
+	[ChoreText] [nvarchar](255) NOT NULL,
+	[Points] [int] NOT NULL,
+	[AssignedTo] [int] NULL,
+	[DateAssigned] [date] NOT NULL,
+	[Completed] [bit] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ChoreID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
 GO
-
--- Rewards Table
-CREATE TABLE Rewards (
-    RewardID INT IDENTITY(1,1) PRIMARY KEY,
-    Name NVARCHAR(100) NOT NULL,
-    Cost INT NOT NULL
-);
+/****** Object:  Table [dbo].[CompletedChores]    Script Date: 4/29/2025 4:50:36 PM ******/
+SET ANSI_NULLS ON
 GO
-
--- RedeemedRewards Table
-CREATE TABLE RedeemedRewards (
-    RedemptionID INT IDENTITY(1,1) PRIMARY KEY,
-    UserID INT FOREIGN KEY REFERENCES Users(UserID),
-    RewardID INT FOREIGN KEY REFERENCES Rewards(RewardID),
-    PointsSpent INT NOT NULL,
-    DateRedeemed DATETIME DEFAULT GETDATE()
-);
+SET QUOTED_IDENTIFIER ON
 GO
-
--- Optional: CompletedChores Log Table
-CREATE TABLE CompletedChores (
-    CompletedID INT IDENTITY(1,1) PRIMARY KEY,
-    ChoreID INT FOREIGN KEY REFERENCES Chores(ChoreID),
-    UserID INT FOREIGN KEY REFERENCES Users(UserID),
-    CompletionDate DATETIME DEFAULT GETDATE()
-);
+CREATE TABLE [dbo].[CompletedChores](
+	[CompletedID] [int] IDENTITY(1,1) NOT NULL,
+	[ChoreID] [int] NOT NULL,
+	[ChoreText] [nvarchar](255) NOT NULL,
+	[Points] [int] NOT NULL,
+	[AssignedTo] [int] NULL,
+	[DateAssigned] [date] NOT NULL,
+	[CompletionDate] [date] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[CompletedID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
 GO
-
-/********************************************************
-* This section populates the Tables
-*********************************************************/
-SET IDENTITY_INSERT Teams ON;
-INSERT INTO Teams (TeamID, TeamName, TeamPassword)
-VALUES
-(1, 'Avengers', 'Avengers'),
-(2, 'Justice', 'Justice'),
-(3, 'Supers', 'Supers');
-SET IDENTITY_INSERT Teams OFF;
-
-SET IDENTITY_INSERT Rewards ON;
-INSERT INTO Rewards (RewardID, Name, Cost)
-VALUES 
-    (1, 'Ice Cream', 10),
-    (2, 'Movie Night', 25),
-    (3, 'Extra Screen Time', 15);
-SET IDENTITY_INSERT Rewards OFF;
-	
-SET IDENTITY_INSERT Users ON;
-INSERT INTO Users (userId, username, email, passwordHash, role, points, totalPoints, teamId)
-VALUES 
-    (1, 'Bansari', 'Bansari@example.com', 'Ban123', 'Parent', 0, 0, 1),
-    (2, 'Yen', 'Yen@example.com', 'Bob123', 'Parent', 0, 0, 1),
-    (3, 'Luna', 'Luna@example.com', 'Bob123', 'Child', 0, 0, 1),
-	(4, 'Bob', 'Bob@example.com', 'Bob123', 'Child', 0, 0, 1);
-SET IDENTITY_INSERT Users OFF;
-
+/****** Object:  Table [dbo].[RedeemedRewards]    Script Date: 4/29/2025 4:50:36 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[RedeemedRewards](
+	[RedemptionID] [int] IDENTITY(1,1) NOT NULL,
+	[UserID] [int] NULL,
+	[RewardID] [int] NULL,
+	[PointsSpent] [int] NOT NULL,
+	[DateRedeemed] [date] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[RedemptionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Rewards]    Script Date: 4/29/2025 4:50:36 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Rewards](
+	[RewardID] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](100) NOT NULL,
+	[Cost] [int] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[RewardID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Teams]    Script Date: 4/29/2025 4:50:36 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Teams](
+	[TeamID] [int] IDENTITY(1,1) NOT NULL,
+	[TeamName] [nvarchar](100) NOT NULL,
+	[TeamPassword] [nvarchar](100) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[TeamID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+UNIQUE NONCLUSTERED 
+(
+	[TeamName] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Users]    Script Date: 4/29/2025 4:50:36 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Users](
+	[UserID] [int] IDENTITY(1,1) NOT NULL,
+	[Username] [nvarchar](50) NOT NULL,
+	[Email] [nvarchar](100) NOT NULL,
+	[PasswordHash] [nvarchar](255) NOT NULL,
+	[Role] [nvarchar](10) NOT NULL,
+	[Points] [int] NULL,
+	[TotalPoints] [int] NULL,
+	[TeamID] [int] NULL,
+	[ParentId] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[UserID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+UNIQUE NONCLUSTERED 
+(
+	[Email] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
