@@ -70,8 +70,10 @@ function ParentDashboard() {
         return d.toISOString().split('T')[0];
       });
 
+      const childUserIds = enhancedChildren.map(child => child.userId);
       const upcomingChores = allChores.filter(c => {
         if (!c.dateAssigned || c.completed) return false;
+        if (!childUserIds.includes(c.assignedTo)) return false;
         const date = new Date(c.dateAssigned).toISOString().split('T')[0];
         return next7Days.includes(date);
       }).sort((a, b) => new Date(a.dateAssigned) - new Date(b.dateAssigned));
