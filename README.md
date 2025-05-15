@@ -1,22 +1,24 @@
 # SameTeamAppFull – Family Chore and Reward Management System
 
-**SameTeamAppFull** is a full-stack web application that helps families collaborate by assigning chores, tracking progress, and rewarding children. It features team management, user authentication, role-based dashboards, a point system, and chore/reward tracking, all backed by a robust ASP.NET Core API and a React.js frontend.
+**SameTeamAppFull** is a full-stack web application that helps families collaborate by assigning chores, tracking progress, and rewarding children. It features team management, user authentication, role-based dashboards, a point system, and chore/reward tracking.
+
+This upgraded version replaces localStorage with a secure and scalable architecture using an **ASP.NET Core API** hosted on **Azure App Service**, and an **Azure SQL Database** for persistent data storage. The React.js frontend communicates with the cloud-hosted backend through secure RESTful endpoints.
 
 ---
 
 ## 🛠 Technologies Used
 
 ### Frontend
-- React.js
+- React.js (deployed on Vercel)
 - React Router
 - Axios
 - FontAwesome
 - CSS / Custom Components
 
 ### Backend
-- ASP.NET Core Web API
+- ASP.NET Core Web API (hosted on Azure App Service)
 - Entity Framework Core
-- SQL Server
+- Azure SQL Database
 - JWT Authentication
 - Swagger for API Testing
 
@@ -57,9 +59,6 @@
 - Persistent login via localStorage
 - RESTful API with full CRUD
 - Backend includes CORS and Swagger
-
----
-
 
 ---
 
@@ -113,12 +112,13 @@ dotnet tool install --global dotnet-ef
 dotnet ef dbcontext scaffold "Server=localhost;Database=SameTeamDB;Trusted_Connection=True;Encrypt=False;" Microsoft.EntityFrameworkCore.SqlServer -o Models --force
 dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
 dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.0
-
+```
 
 ---
+
 ### Frontend Setup
 ```bash
 cd FrontEnd
 npm install
 npm start
-
+```
