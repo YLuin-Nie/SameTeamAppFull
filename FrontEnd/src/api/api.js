@@ -4,7 +4,8 @@
 import axios from 'axios';
 
 // ✅ Use environment variable for API base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://sameteamapiazure-gfawexgsaph0cvg2.centralus-01.azurewebsites.net/api';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://sameteamapiazure-gfawexgsaph0cvg2.centralus-01.azurewebsites.net/api';
+const API_BASE_URL = 'https://sameteamapiazure-gfawexgsaph0cvg2.centralus-01.azurewebsites.net/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
