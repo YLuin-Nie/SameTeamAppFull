@@ -3,7 +3,7 @@ using SameTeamAPI.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using System.Text.Json.Serialization; // ✅ Add this
+using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,7 +76,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("https://same-team-app-full-stack.vercel.app")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -84,23 +84,29 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// ✅ Swagger UI Middleware
-if (app.Environment.IsDevelopment())
+// ✅ Swagger in all environments
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "SameTeamAPI v1");
-        c.RoutePrefix = string.Empty; // ✅ loads at root path (localhost:5073)
+        c.RoutePrefix = string.Empty; // 👈 loads Swagger at root path (/)
     });
 }
 
-// ✅ Middleware: ⬇️ VERY IMPORTANT ORDER
+// ✅ Middleware Order
 app.UseRouting();
 app.UseCors("AllowFrontend");
-// app.UseHttpsRedirection(); // ✅ keep OFF for now during localhost testing
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+// app.UseHttpsRedirection(); // Keep off during dev if needed
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
-
