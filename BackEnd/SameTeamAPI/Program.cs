@@ -76,11 +76,23 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://same-team-app-full-stack.vercel.app")
+        policy.WithOrigins(
+            "https://same-team-app-full-stack.vercel.app", // ✅ React SameTeamAppFull frontend
+            "https://your-new-vercel-url.vercel.app"       // ✅ React SameTeamAppFull frontend
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+    });
+
+    // Optional for mobile or testing
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
+
 
 var app = builder.Build();
 
