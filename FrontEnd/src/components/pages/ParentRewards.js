@@ -1,13 +1,8 @@
 // File Name: ParentRewards.js
 
 import React, { useState, useEffect } from "react";
-import {
-  fetchUsers,
-  fetchRewards,
-  postReward,
-  updateReward,
-  deleteReward as deleteRewardAPI,
-  rewardAsChore,
+import {fetchUsers, fetchRewards, postReward, updateReward,
+  deleteReward as deleteRewardAPI, rewardAsChore,fetchRedeemedRewards
 } from "../../api/api";
 import { getCurrentUser } from "../../utils/auth";
 
@@ -25,6 +20,8 @@ function ParentRewards() {
   const [editedRewardName, setEditedRewardName] = useState("");
   const [editedRewardCost, setEditedRewardCost] = useState(0);
 
+  const [redeemedRewards, setRedeemedRewards] = useState({}); 
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -37,8 +34,17 @@ function ParentRewards() {
 
         const rewardsData = await fetchRewards();
         setRewards(rewardsData);
+
+        // Fetch redeemed rewards for each child
+        const redemptionMap = {};
+        for (const child of teamChildren) {
+          const redemptions = await fetchRedeemedRewards(child.userId);
+          redemptionMap[child.username] = redemptions;
+        }
+        setRedeemedRewards(redemptionMap);
+
       } catch (err) {
-        console.error("Error loading users or rewards:", err);
+        console.error("Error loading users, rewards, or redemptions:", err);
       }
     };
     loadData();
@@ -49,9 +55,9 @@ function ParentRewards() {
       alert("Please select a child, enter a reward, and set a valid point amount.");
       return;
     }
-  
-    const currentDate = new Date().toISOString().split('T')[0]; // e.g., '2025-04-29'
-  
+
+    const currentDate = new Date().toISOString().split('T')[0];
+
     const rewardChore = {
       choreText: rewardChildName.trim(),
       points: rewardChildPoints,
@@ -59,7 +65,7 @@ function ParentRewards() {
       dateAssigned: currentDate,
       completed: false
     };
-    
+
     try {
       const result = await rewardAsChore(rewardChore);
       const childUser = children.find(c => c.userId === parseInt(selectedChild));
@@ -71,9 +77,9 @@ function ParentRewards() {
     } catch (err) {
       console.error("Error assigning chore:", err);
       alert("Could not assign reward chore.");
-    }    
+    }
   };
-  
+
   const addReward = async () => {
     if (!newRewardName.trim() || newRewardPoints <= 0) {
       alert("Please enter a valid reward name and cost.");
@@ -184,6 +190,32 @@ function ParentRewards() {
             </li>
           ))}
       </ul>
+
+      <hr />
+
+      <h3>Redeemed Rewards History (Grouped by Child)</h3>
+      {Object.keys(redeemedRewards).length === 0 ? (
+        <p>No redeemed rewards yet.</p>
+      ) : (
+        Object.entries(redeemedRewards).map(([childName, rewardsList]) => (
+          <div key={childName} className="child-redeemed-block">
+            <h4>{childName}</h4>
+            {rewardsList.length === 0 ? (
+              <p>No redemptions.</p>
+            ) : (
+              <ul className="redeemed-list">
+                {rewardsList.map((reward) => (
+                  <li key={reward.redemptionId}>
+                    {reward.rewardName || reward.name} - {reward.pointsSpent} Points
+                    <br />
+                    <small>Redeemed on: {new Date(reward.dateRedeemed).toLocaleDateString()}</small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }
