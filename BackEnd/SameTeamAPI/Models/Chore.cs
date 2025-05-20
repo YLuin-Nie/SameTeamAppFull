@@ -15,7 +15,7 @@ public partial class Chore
 
     public DateOnly DateAssigned { get; set; }
 
-    public bool Completed { get; set; } = false;
+    public bool Completed { get; set; }
 
     public virtual User? AssignedToNavigation { get; set; }
 }
