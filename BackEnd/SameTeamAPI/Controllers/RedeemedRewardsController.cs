@@ -34,6 +34,7 @@ namespace SameTeamAPI.Controllers
         {
             var userRewards = await _context.RedeemedRewards
                 .Where(r => r.UserId == userId)
+                .Include(r => r.Reward)
                 .OrderByDescending(r => r.DateRedeemed)
                 .ToListAsync();
 
@@ -44,10 +45,19 @@ namespace SameTeamAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<RedeemedReward>> PostRedeemedReward(RedeemedReward redeemedReward)
         {
-            // ✅ Auto-set today if no date provided
             if (redeemedReward.DateRedeemed == default)
             {
                 redeemedReward.DateRedeemed = DateOnly.FromDateTime(DateTime.UtcNow);
+            }
+
+            // ✅ Add this to populate the Name column
+            if (redeemedReward.RewardId.HasValue)
+            {
+                var reward = await _context.Rewards.FindAsync(redeemedReward.RewardId.Value);
+                if (reward != null)
+                {
+                    redeemedReward.Name = reward.Name;
+                }
             }
 
             _context.RedeemedRewards.Add(redeemedReward);
@@ -55,5 +65,6 @@ namespace SameTeamAPI.Controllers
 
             return CreatedAtAction(nameof(GetRedeemedRewardsByUser), new { userId = redeemedReward.UserId }, redeemedReward);
         }
+
     }
 }

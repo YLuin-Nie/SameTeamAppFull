@@ -11,6 +11,8 @@ public partial class RedeemedReward
 
     public int? RewardId { get; set; }
 
+    public string? Name { get; set; }
+
     public int PointsSpent { get; set; }
 
     public DateOnly DateRedeemed { get; set; }
