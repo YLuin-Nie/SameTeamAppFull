@@ -206,7 +206,7 @@ function ParentRewards() {
               <ul className="redeemed-list">
                 {rewardsList.map((reward) => (
                   <li key={reward.redemptionId}>
-                    {reward.rewardName || reward.name} - {reward.pointsSpent} Points
+                    {reward.rewardName || reward.name || reward.Reward?.name || "Unnamed Reward"} - {reward.pointsSpent} Points
                     <br />
                     <small>Redeemed on: {new Date(reward.dateRedeemed).toLocaleDateString()}</small>
                   </li>
