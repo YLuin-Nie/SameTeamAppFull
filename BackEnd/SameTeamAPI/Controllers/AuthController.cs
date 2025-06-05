@@ -21,46 +21,37 @@ namespace SameTeamAPI.Controllers
             _configuration = configuration;
         }
 
-[HttpPost("login")]
-public IActionResult Login([FromBody] LoginModel login)
-{
-    try
-    {
-        var user = _context.Users
-            .FirstOrDefault(u => u.Email.ToLower() == login.Email.ToLower());
-
-        if (user == null)
-            return Unauthorized("User not found");
-
-        var passwordHasher = new PasswordHasher<User>();
-        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, login.Password);
-
-        if (result != PasswordVerificationResult.Success)
-            return Unauthorized("Invalid password");
-
-        var token = GenerateJwtToken(user);
-
-        return Ok(new
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] LoginModel login)
         {
-            token,
-            user = new
-            {
-                user.UserId,
-                user.Username,
-                user.Email,
-                user.Role,
-                user.Points,
-                user.TeamId
-            }
-        });
-    }
-    catch (Exception ex)
-    {
-        // 👇 This reveals the actual internal error
-        return StatusCode(500, $"INTERNAL ERROR: {ex.Message}");
-    }
-}
+            var user = _context.Users
+                .FirstOrDefault(u => u.Email.ToLower() == login.Email.ToLower());
 
+            if (user == null)
+                return Unauthorized("User not found");
+
+            var passwordHasher = new PasswordHasher<User>();
+            var passwordVerificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, login.Password);
+
+            if (passwordVerificationResult != PasswordVerificationResult.Success)
+                return Unauthorized("Invalid password");
+
+            var token = GenerateJwtToken(user);
+
+            return Ok(new
+            {
+                token,
+                user = new
+                {
+                    user.UserId,
+                    user.Username,
+                    user.Email,
+                    user.Role,
+                    user.Points,
+                    user.TeamId
+                }
+            });
+        }
 
         [HttpPost("register")]
         public IActionResult Register([FromBody] RegisterModel model)

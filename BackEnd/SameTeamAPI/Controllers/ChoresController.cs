@@ -66,8 +66,14 @@ public class ChoresController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("complete/{choreId}")]
-    public async Task<IActionResult> CompleteChore([FromRoute] int choreId)
+public class CompleteChoreRequest
+{
+    public DateOnly CompletionDate { get; set; }
+}
+
+[HttpPost("complete/{choreId}")]
+public async Task<IActionResult> CompleteChore([FromRoute] int choreId, [FromBody] CompleteChoreRequest request)
+
     {
         var chore = await _context.Chores.FindAsync(choreId);
         if (chore == null)
@@ -84,7 +90,8 @@ public class ChoresController : ControllerBase
             Points = chore.Points,
             AssignedTo = chore.AssignedTo,
             DateAssigned = chore.DateAssigned,
-            CompletionDate = DateOnly.FromDateTime(DateTime.UtcNow)
+            CompletionDate = request.CompletionDate
+
         };
 
         _context.CompletedChores.Add(completedChore);

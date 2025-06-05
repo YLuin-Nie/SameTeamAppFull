@@ -109,7 +109,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging() || app.Enviro
 
 // ✅ Middleware Order
 app.UseRouting();
-app.UseCors("AllowFrontend");
+app.UseCors("AllowAll");
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
